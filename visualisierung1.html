@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Interaktive Bruchstreifen – Bruchaddition</title>
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card-bg: #ffffff;
+      --border: #d0d4e4;
+      --accent: #3b82f6;
+      --strip-height: 60px;
+      --strip1-color: #15803d; /* dunkles Grün */
+      --strip2-color: #be185d; /* dunkles Rosa */
+      --line-color: #111827;   /* Schwarz für Konturen & Teilungsstriche */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #e0ecff 0, #f7f7fb 45%, #f7f7fb 100%);
+      color: #111827;
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 2rem auto 3rem;
+      padding: 1.5rem 2rem 2rem;
+      background: var(--card-bg);
+      border-radius: 1.5rem;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.6rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* obere Zeile: Vorgehensweise links, Reset rechts */
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 3rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #6b7280;
+      line-height: 1.4;
+      flex: 1 1 auto;
+    }
+
+    .reset-area {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      margin-right: 1.5rem;
+      margin-left: 3rem; /* Abstand nach links zum Text */
+    }
+
+    .reset-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 24px;   /* damit das Pfeilsymbol groß genug ist */
+      line-height: 1;
+    }
+
+    .reset-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .reset-text {
+      font-size: 0.95rem;
+      color: #6b7280;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    /* Überschrift für rechte Spalte (Einteilung verändern) */
+    .controls-column-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-top: 0.6rem;
+      margin-bottom: 0.3rem;
+      width: 160px;         /* ungefähr so breit wie die Steuer-Spalte */
+      margin-left: auto;    /* an die rechte Seite schieben */
+      margin-right: 0.25rem; /* minimal weiter nach rechts gerückt */
+    }
+
+    .controls-column-header span {
+      line-height: 1.1;
+    }
+
+    /* Bruch 1 & Bruch 2 – Kästen */
+    .strip-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+      padding: 0.85rem 1rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+    }
+
+    .row-label {
+      flex: 0 0 90px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding-top: 0.4rem;
+    }
+
+    .strip-and-info {
+      flex: 1 1 260px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Streifen + Minus-Button in einer Zeile */
+    .strip-with-minus-row {
+      position: relative;          /* Bezugspunkt für den Minus-Button */
+      display: flex;
+      align-items: flex-end;       /* Minus bündig mit Unterkante des Streifens */
+      gap: 0.5rem;
+    }
+
+    /* Container für mehrere Bruchstreifen pro Quelle */
+    .fraction-strip-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1 1 auto;             /* Streifen nutzen die volle Breite */
+    }
+
+    /* Plus- / Minus-Schaltflächen zum Hinzufügen/Entfernen weiterer Streifen */
+    .add-layer-btn,
+    .remove-layer-btn {
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 999px;
+      border: 1px dashed #9ca3af;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #4b5563;
+      padding: 0;
+    }
+
+    .add-layer-btn {
+      margin-top: 0.45rem;
+    }
+
+    /* Minus-Button absolut links vom Streifen, ohne diesen zu verschieben */
+    .remove-layer-btn {
+      position: absolute;
+      bottom: 0;                 /* gleiche Höhe wie Unterkante des Streifens */
+      left: 0;                   /* am linken Rand des Streifen-Bereichs */
+      transform: translateX(-120%); /* nach links vor den Streifen */
+    }
+
+    .add-layer-btn:hover,
+    .remove-layer-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .add-layer-btn svg,
+    .remove-layer-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Bruchstreifen eckig, innen weiß, schwarze Kontur */
+    .fraction-strip {
+      position: relative;
+      height: var(--strip-height);
+      border-radius: 0;
+      background: #ffffff;
+      border: 3px solid var(--line-color);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .fraction-strip::before {
+      content: none;
+    }
+
+    .grid-layer,
+    .color-layer {
+      position: absolute;
+      inset: 0;
+    }
+
+    .grid-layer {
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .color-layer {
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Teilungsstriche */
+    .grid-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--line-color);
+      opacity: 0.75;
+      transform: translateX(-50%);
+    }
+
+    .color-block {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+    }
+
+    .color-block.color-1 {
+      background: var(--strip1-color);
+      opacity: 0.75;
+    }
+
+    .color-block.color-2 {
+      background: var(--strip2-color);
+      opacity: 0.8;
+    }
+
+    .controls {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: auto;
+      /* Vertikal zentriert zur Streifenhöhe */
+      margin-top: calc((var(--strip-height) - 2.1rem) / 2);
+    }
+
+    .step-btn {
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.05s ease-out, box-shadow 0.05s ease-out,
+        border-color 0.05s ease-out, background 0.05s ease-out;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+    }
+
+    .step-btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 3px 6px rgba(37, 99, 235, 0.18);
+    }
+
+    .step-btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      background: #eff6ff;
+    }
+
+    .division-input {
+      width: 3.5rem;
+      padding: 0.3rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      transition: border-color 0.08s ease-out, box-shadow 0.08s ease-out;
+    }
+
+    .division-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.35);
+    }
+
+    /* Native Up/Down-Pfeile ausblenden */
+    .division-input::-webkit-outer-spin-button,
+    .division-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .division-input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* Summentafel */
+    .sum-container {
+      margin-top: 2.4rem;
+      margin-bottom: 1.2rem;
+      padding: 0.85rem 1rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+    }
+
+    .sum-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .sum-line + .sum-line {
+      margin-top: 0.6rem;
+    }
+
+    .sum-label {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding-top: 0;
+    }
+
+    .sum-label-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .sum-label-sub {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    .sum-toggle {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      margin-top: 0.1rem;
+    }
+
+    .sum-toggle input {
+      display: none;
+    }
+
+    .sum-toggle-box {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid var(--border);
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+      position: relative;
+    }
+
+    .sum-toggle input:checked + .sum-toggle-box {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+    }
+
+    .sum-toggle input:checked + .sum-toggle-box::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .sum-content {
+      display: flex;
+      flex: 1 1 auto;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .controls-placeholder {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    @media (max-width: 720px) {
+      .header-row {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .reset-area {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .strip-row {
+        padding: 0.8rem 0.9rem 1rem;
+      }
+
+      .sum-container {
+        padding: 0.8rem 0.9rem 1rem;
+      }
+
+      .row-label {
+        flex-basis: 100%;
+        padding-top: 0;
+      }
+
+      .controls {
+        margin-left: 0;
+        margin-top: 0.5rem;
+      }
+
+      .fraction-strip {
+        height: 52px;
+      }
+
+      .sum-content {
+        flex-direction: column;
+      }
+
+      .controls-column-header {
+        align-items: flex-start;
+        width: auto;
+        margin-left: 0;
+        margin-right: 0;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Interaktive Bruchstreifen zur Bruchaddition</h1>
+
+    <!-- Vorgehensweise + Reset -->
+    <div class="header-row">
+      <p class="subtitle">
+        Vorgehensweise:<br>
+        1) Stelle mit den Pfeiltasten rechts eine passende Einteilung des Bruchstreifens ein.<br>
+        2) Berühre die entstehenden Rechtecke, um die Teilflächen zu färben.<br>
+        3) Verändere die Einteilung, um den gleichen Anteil in anderen Einteilungen darzustellen.
+      </p>
+
+      <div class="reset-area">
+        <button class="reset-btn" id="reset-button"
+                type="button"
+                aria-label="Farben und Einteilung zurücksetzen">
+          ↺
+        </button>
+        <div class="reset-text">
+          <span>Farben und Einteilung</span><br>
+          <span>zurücksetzen</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Überschrift für rechte Spalte -->
+    <div class="controls-column-header">
+      <span>Einteilung</span>
+      <span>verändern</span>
+    </div>
+
+    <!-- 1. Bruch -->
+    <div class="strip-row" data-role="source" data-source-index="0">
+      <div class="row-label">1. Bruch</div>
+
+      <div class="strip-and-info">
+        <div class="strip-with-minus-row">
+          <button class="remove-layer-btn" type="button"
+                  data-source-index="0"
+                  aria-label="Letzten Bruchstreifen für 1. Bruch entfernen">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <!-- weiches ^-Symbol -->
+              <path d="M7 14 L12 9 L17 14"
+                    fill="none"
+                    stroke="#4b5563"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="fraction-strip-container" data-source-index="0">
+            <div class="fraction-strip" data-layer-index="0" aria-label="Bruchstreifen 1">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+        </div>
+        <button class="add-layer-btn" type="button"
+                data-source-index="0"
+                aria-label="Weiteren Bruchstreifen für 1. Bruch hinzufügen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <!-- weiches v-Symbol -->
+            <path d="M7 12 L12 17 L17 12"
+                  fill="none"
+                  stroke="#4b5563"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="step-btn" data-dir="-1"
+                aria-label="Weniger Unterteilungen für 1. Bruch">◀</button>
+        <input class="division-input" type="number" min="1" max="30" value="1"
+               aria-label="Anzahl der Unterteilungen für 1. Bruch" />
+        <button class="step-btn" data-dir="1"
+                aria-label="Mehr Unterteilungen für 1. Bruch">▶</button>
+      </div>
+    </div>
+
+    <!-- 2. Bruch -->
+    <div class="strip-row" data-role="source" data-source-index="1">
+      <div class="row-label">2. Bruch</div>
+
+      <div class="strip-and-info">
+        <div class="strip-with-minus-row">
+          <button class="remove-layer-btn" type="button"
+                  data-source-index="1"
+                  aria-label="Letzten Bruchstreifen für 2. Bruch entfernen">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <!-- weiches ^-Symbol -->
+              <path d="M7 14 L12 9 L17 14"
+                    fill="none"
+                    stroke="#4b5563"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="fraction-strip-container" data-source-index="1">
+            <div class="fraction-strip" data-layer-index="0" aria-label="Bruchstreifen 2">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+        </div>
+        <button class="add-layer-btn" type="button"
+                data-source-index="1"
+                aria-label="Weiteren Bruchstreifen für 2. Bruch hinzufügen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <!-- weiches v-Symbol -->
+            <path d="M7 12 L12 17 L17 12"
+                  fill="none"
+                  stroke="#4b5563"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="step-btn" data-dir="-1"
+                aria-label="Weniger Unterteilungen für 2. Bruch">◀</button>
+        <input class="division-input" type="number" min="1" max="30" value="1"
+               aria-label="Anzahl der Unterteilungen für 2. Bruch" />
+        <button class="step-btn" data-dir="1"
+                aria-label="Mehr Unterteilungen für 2. Bruch">▶</button>
+      </div>
+    </div>
+
+    <!-- Ergebnisbruchstreifen (Summe) – bis zu 6 Zeilen -->
+    <div class="sum-container">
+      <!-- Ergebnis-Streifen 0 (mit Label & Controls) -->
+      <div class="sum-line" data-result-index="0">
+        <div class="row-label sum-label">
+          <div class="sum-label-title">Summe</div>
+          <div class="sum-label-sub">anzeigen</div>
+          <label class="sum-toggle">
+            <!-- Start: nicht angehakt, Summe unsichtbar -->
+            <input type="checkbox" id="toggle-sum" />
+            <span class="sum-toggle-box"></span>
+          </label>
+        </div>
+
+        <div class="sum-content">
+          <div class="strip-and-info">
+            <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 1">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button class="step-btn" data-dir="-1"
+                    aria-label="Weniger Unterteilungen für Summe">◀</button>
+            <input class="division-input" type="number" min="1" max="30" value="1"
+                   aria-label="Anzahl der Unterteilungen für Ergebnistreifen" />
+            <button class="step-btn" data-dir="1"
+                    aria-label="Mehr Unterteilungen für Summe">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ergebnis-Streifen 1–5 (nur Streifen, keine Controls) -->
+      <!-- 1 -->
+      <div class="sum-line" data-result-index="1" style="display:none;">
+        <div class="row-label"></div>
+        <div class="strip-and-info">
+          <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 2">
+            <div class="color-layer"></div>
+            <div class="grid-layer"></div>
+          </div>
+        </div>
+        <div class="controls controls-placeholder" aria-hidden="true">
+          <button class="step-btn">◀</button>
+          <input class="division-input" type="number" />
+          <button class="step-btn">▶</button>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="sum-line" data-result-index="2" style="display:none;">
+        <div class="row-label"></div>
+        <div class="strip-and-info">
+          <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 3">
+            <div class="color-layer"></div>
+            <div class="grid-layer"></div>
+          </div>
+        </div>
+        <div class="controls controls-placeholder" aria-hidden="true">
+          <button class="step-btn">◀</button>
+          <input class="division-input" type="number" />
+          <button class="step-btn">▶</button>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="sum-line" data-result-index="3" style="display:none;">
+        <div class="row-label"></div>
+        <div class="strip-and-info">
+          <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 4">
+            <div class="color-layer"></div>
+            <div class="grid-layer"></div>
+          </div>
+        </div>
+        <div class="controls controls-placeholder" aria-hidden="true">
+          <button class="step-btn">◀</button>
+          <input class="division-input" type="number" />
+          <button class="step-btn">▶</button>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="sum-line" data-result-index="4" style="display:none;">
+        <div class="row-label"></div>
+        <div class="strip-and-info">
+          <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 5">
+            <div class="color-layer"></div>
+            <div class="grid-layer"></div>
+          </div>
+        </div>
+        <div class="controls controls-placeholder" aria-hidden="true">
+          <button class="step-btn">◀</button>
+          <input class="division-input" type="number" />
+          <button class="step-btn">▶</button>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="sum-line" data-result-index="5" style="display:none;">
+        <div class="row-label"></div>
+        <div class="strip-and-info">
+          <div class="fraction-strip" aria-label="Ergebnisbruchstreifen 6">
+            <div class="color-layer"></div>
+            <div class="grid-layer"></div>
+          </div>
+        </div>
+        <div class="controls controls-placeholder" aria-hidden="true">
+          <button class="step-btn">◀</button>
+          <input class="division-input" type="number" />
+          <button class="step-btn">▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const MIN_DIV = 1;
+      const MAX_DIV = 30;
+      const MAX_LAYERS = 3;          // bis zu 3 Streifen pro Bruch (Wert bis 3)
+      const MAX_RESULT_STRIPS = 6;   // bis zu 6 Ergebnisstreifen
+      const EPS = 1e-6;
+
+      const state = {
+        sources: [
+          { divisions: 1, layers: [ { intervals: [] } ] }, // 1. Bruch
+          { divisions: 1, layers: [ { intervals: [] } ] }  // 2. Bruch
+        ],
+        sum: {
+          divisions: 1
+        }
+      };
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function addInterval(intervals, start, end) {
+        start = Math.max(0, start);
+        end = Math.min(1, end);
+        if (end - start <= EPS) return intervals.slice();
+
+        const result = [];
+        let newStart = start;
+        let newEnd = end;
+        let inserted = false;
+
+        for (const seg of intervals) {
+          if (seg.end < newStart - EPS) {
+            result.push(seg);
+          } else if (seg.start > newEnd + EPS) {
+            if (!inserted) {
+              result.push({ start: newStart, end: newEnd });
+              inserted = true;
+            }
+            result.push(seg);
+          } else {
+            newStart = Math.min(newStart, seg.start);
+            newEnd = Math.max(newEnd, seg.end);
+          }
+        }
+
+        if (!inserted) {
+          result.push({ start: newStart, end: newEnd });
+        }
+        return result;
+      }
+
+      function subtractInterval(intervals, start, end) {
+        const result = [];
+        for (const seg of intervals) {
+          if (seg.end <= start + EPS || seg.start >= end - EPS) {
+            result.push(seg);
+          } else {
+            if (seg.start < start - EPS) {
+              const left = { start: seg.start, end: Math.max(seg.start, start) };
+              if (left.end - left.start > EPS) result.push(left);
+            }
+            if (seg.end > end + EPS) {
+              const right = { start: Math.min(seg.end, end), end: seg.end };
+              if (right.end - right.start > EPS) result.push(right);
+            }
+          }
+        }
+        return result;
+      }
+
+      function coverage(intervals, start, end) {
+        let covered = 0;
+        for (const seg of intervals) {
+          const s = Math.max(seg.start, start);
+          const e = Math.min(seg.end, end);
+          if (e > s) covered += e - s;
+        }
+        const length = end - start;
+        return length > 0 ? covered / length : 0;
+      }
+
+      function totalFraction(intervals) {
+        return intervals.reduce((sum, seg) => sum + (seg.end - seg.start), 0);
+      }
+
+      function totalFractionSource(source) {
+        return source.layers.reduce(
+          (sum, layer) => sum + totalFraction(layer.intervals),
+          0
+        );
+      }
+
+      function updateLayerButtons(sourceIndex) {
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+        const addBtn = row.querySelector('.add-layer-btn');
+        const removeBtn = row.querySelector('.remove-layer-btn');
+        const source = state.sources[sourceIndex];
+        if (addBtn) {
+          addBtn.style.display = source.layers.length >= MAX_LAYERS ? 'none' : '';
+        }
+        if (removeBtn) {
+          removeBtn.style.display = source.layers.length > 1 ? '' : 'none';
+        }
+      }
+
+      function renderSourceStrip(sourceIndex) {
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+
+        const source = state.sources[sourceIndex];
+        const input  = row.querySelector('.division-input');
+        if (input) {
+          input.value = source.divisions;
+        }
+
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const strips = container.querySelectorAll('.fraction-strip');
+        strips.forEach(function (stripEl, layerIndex) {
+          stripEl.dataset.layerIndex = String(layerIndex);
+          const gridLayer  = stripEl.querySelector('.grid-layer');
+          const colorLayer = stripEl.querySelector('.color-layer');
+          const layer      = source.layers[layerIndex];
+
+          if (gridLayer) {
+            gridLayer.innerHTML = '';
+            const n = source.divisions;
+            for (let i = 1; i < n; i++) {
+              const line = document.createElement('div');
+              line.className = 'grid-line';
+              line.style.left = (i / n * 100) + '%';
+              gridLayer.appendChild(line);
+            }
+          }
+
+          if (colorLayer) {
+            colorLayer.innerHTML = '';
+            if (!layer) return;
+            const colorClass = sourceIndex === 0 ? 'color-1' : 'color-2';
+            for (const seg of layer.intervals) {
+              const block = document.createElement('div');
+              block.className = 'color-block ' + colorClass;
+              block.style.left = (seg.start * 100) + '%';
+              block.style.width = ((seg.end - seg.start) * 100) + '%';
+              colorLayer.appendChild(block);
+            }
+          }
+        });
+
+        updateLayerButtons(sourceIndex);
+      }
+
+      // Ergebnisstreifen so aufbauen, dass
+      // 1) erste n1 Streifen volle grüne Ganze von 1. Bruch sind,
+      // 2) danach n2 volle rosa Ganze von 2. Bruch,
+      // 3) dann Rest r1 und r2 (in dieser Reihenfolge) über so viele Streifen wie nötig verteilt werden.
+      function computeResultStrips() {
+        const total1 = totalFractionSource(state.sources[0]);
+        const total2 = totalFractionSource(state.sources[1]);
+        const sumVal = total1 + total2;
+
+        let stripCount;
+        if (sumVal <= 0) {
+          stripCount = 1;
+        } else {
+          stripCount = Math.ceil(sumVal);
+        }
+        stripCount = Math.min(MAX_RESULT_STRIPS, stripCount);
+
+        const n1 = Math.floor(total1);
+        const n2 = Math.floor(total2);
+        let r1 = total1 - n1;
+        let r2 = total2 - n2;
+
+        const strips = Array.from({ length: stripCount }, () => ({
+          color1: [],
+          color2: []
+        }));
+
+        // Ganze von 1. Bruch (grün)
+        for (let i = 0; i < n1 && i < stripCount; i++) {
+          strips[i].color1.push({ start: 0, end: 1 });
+        }
+
+        // Ganze von 2. Bruch (rosa)
+        for (let j = 0; j < n2 && (n1 + j) < stripCount; j++) {
+          const idx = n1 + j;
+          strips[idx].color2.push({ start: 0, end: 1 });
+        }
+
+        // Restteile von Bruch 1 und Bruch 2
+        let k = n1 + n2;  // erster Streifen nach den Ganzen
+        if (k >= stripCount) {
+          return { total1, total2, sum: sumVal, stripCount, strips };
+        }
+        let offset = 0;   // wie weit der aktuelle Streifen schon gefüllt ist
+
+        // Rest von Bruch 1 zuerst
+        while (r1 > EPS && k < stripCount) {
+          const capacity = 1 - offset;
+          if (capacity <= EPS) {
+            k++;
+            offset = 0;
+            continue;
+          }
+          const amount = Math.min(r1, capacity);
+          strips[k].color1.push({ start: offset, end: offset + amount });
+          offset += amount;
+          r1 -= amount;
+          if (offset >= 1 - EPS) {
+            k++;
+            offset = 0;
+          }
+        }
+
+        // Danach Rest von Bruch 2
+        while (r2 > EPS && k < stripCount) {
+          const capacity = 1 - offset;
+          if (capacity <= EPS) {
+            k++;
+            offset = 0;
+            continue;
+          }
+          const amount = Math.min(r2, capacity);
+          strips[k].color2.push({ start: offset, end: offset + amount });
+          offset += amount;
+          r2 -= amount;
+          if (offset >= 1 - EPS) {
+            k++;
+            offset = 0;
+          }
+        }
+
+        return { total1, total2, sum: sumVal, stripCount, strips };
+      }
+
+      function renderSumStrips() {
+        const sumToggle = document.getElementById('toggle-sum');
+        const mainLine = document.querySelector('.sum-line[data-result-index="0"]');
+        if (!mainLine) return;
+        const sumContent = mainLine.querySelector('.sum-content');
+
+        const showSum = !sumToggle || sumToggle.checked;
+
+        const otherLines = document.querySelectorAll(
+          '.sum-line[data-result-index]:not([data-result-index="0"])'
+        );
+
+        if (!showSum) {
+          if (sumContent) sumContent.style.display = 'none';
+
+          otherLines.forEach(line => {
+            line.style.display = 'none';
+            const strip = line.querySelector('.fraction-strip');
+            if (strip) {
+              const gl = strip.querySelector('.grid-layer');
+              const cl = strip.querySelector('.color-layer');
+              if (gl) gl.innerHTML = '';
+              if (cl) cl.innerHTML = '';
+            }
+          });
+
+          const mainStrip = mainLine.querySelector('.fraction-strip');
+          if (mainStrip) {
+            const gl = mainStrip.querySelector('.grid-layer');
+            const cl = mainStrip.querySelector('.color-layer');
+            if (gl) gl.innerHTML = '';
+            if (cl) cl.innerHTML = '';
+          }
+          mainLine.style.display = '';
+          return;
+        } else {
+          if (sumContent) sumContent.style.display = '';
+        }
+
+        const info = computeResultStrips();
+        const divisions = state.sum.divisions;
+
+        const input = mainLine.querySelector('.division-input');
+        if (input) input.value = divisions;
+
+        for (let idx = 0; idx < MAX_RESULT_STRIPS; idx++) {
+          const line = document.querySelector(
+            '.sum-line[data-result-index="' + idx + '"]'
+          );
+          if (!line) continue;
+          const strip = line.querySelector('.fraction-strip');
+          if (!strip) continue;
+          const gridLayer = strip.querySelector('.grid-layer');
+          const colorLayer = strip.querySelector('.color-layer');
+
+          if (idx >= info.stripCount) {
+            if (idx === 0) {
+              if (gridLayer) gridLayer.innerHTML = '';
+              if (colorLayer) colorLayer.innerHTML = '';
+              line.style.display = '';
+            } else {
+              line.style.display = 'none';
+              if (gridLayer) gridLayer.innerHTML = '';
+              if (colorLayer) colorLayer.innerHTML = '';
+            }
+            continue;
+          }
+
+          line.style.display = '';
+
+          if (gridLayer) {
+            gridLayer.innerHTML = '';
+            for (let i = 1; i < divisions; i++) {
+              const gl = document.createElement('div');
+              gl.className = 'grid-line';
+              gl.style.left = (i / divisions * 100) + '%';
+              gridLayer.appendChild(gl);
+            }
+          }
+
+          if (colorLayer) {
+            colorLayer.innerHTML = '';
+            const stripInfo = info.strips[idx];
+
+            stripInfo.color1.forEach(seg => {
+              const block = document.createElement('div');
+              block.className = 'color-block color-1';
+              block.style.left = (seg.start * 100) + '%';
+              block.style.width = ((seg.end - seg.start) * 100) + '%';
+              colorLayer.appendChild(block);
+            });
+
+            stripInfo.color2.forEach(seg => {
+              const block = document.createElement('div');
+              block.className = 'color-block color-2';
+              block.style.left = (seg.start * 100) + '%';
+              block.style.width = ((seg.end - seg.start) * 100) + '%';
+              colorLayer.appendChild(block);
+            });
+          }
+        }
+      }
+
+      function handleSourceStripClick(event) {
+        const stripEl = event.currentTarget;
+        const row = stripEl.closest('.strip-row[data-role="source"]');
+        if (!row) return;
+
+        const sourceIndex = parseInt(row.dataset.sourceIndex, 10);
+        const layerIndex = parseInt(stripEl.dataset.layerIndex || '0', 10);
+        const source = state.sources[sourceIndex];
+        const layer = source.layers[layerIndex];
+
+        const rect = stripEl.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const ratioRaw = x / rect.width;
+        const ratio = Math.min(Math.max(ratioRaw, 0), 1 - 1e-9);
+
+        const n = source.divisions;
+        let cellIndex = Math.floor(ratio * n);
+        if (cellIndex < 0) cellIndex = 0;
+        if (cellIndex >= n) cellIndex = n - 1;
+
+        const start = cellIndex / n;
+        const end = (cellIndex + 1) / n;
+
+        const cov = coverage(layer.intervals, start, end);
+
+        if (cov > 0.01) {
+          layer.intervals = subtractInterval(layer.intervals, start, end);
+        } else {
+          layer.intervals = addInterval(layer.intervals, start, end);
+        }
+
+        renderSourceStrip(sourceIndex);
+        renderSumStrips();
+      }
+
+      function addLayerToSource(sourceIndex) {
+        const source = state.sources[sourceIndex];
+        if (!source || source.layers.length >= MAX_LAYERS) return;
+
+        source.layers.push({ intervals: [] });
+
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const newLayerIndex = source.layers.length - 1;
+
+        const strip = document.createElement('div');
+        strip.className = 'fraction-strip';
+        strip.dataset.layerIndex = String(newLayerIndex);
+        strip.setAttribute(
+          'aria-label',
+          'Bruchstreifen ' + (sourceIndex + 1) + ' – Teil ' + (newLayerIndex + 1)
+        );
+        strip.innerHTML = '<div class="color-layer"></div><div class="grid-layer"></div>';
+
+        container.appendChild(strip);
+        strip.addEventListener('click', handleSourceStripClick);
+
+        renderSourceStrip(sourceIndex);
+        renderSumStrips();
+      }
+
+      function removeLayerFromSource(sourceIndex) {
+        const source = state.sources[sourceIndex];
+        if (!source || source.layers.length <= 1) return;
+
+        source.layers.pop();
+
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const lastStrip = container.querySelector('.fraction-strip:last-child');
+        if (lastStrip) {
+          container.removeChild(lastStrip);
+        }
+
+        renderSourceStrip(sourceIndex);
+        renderSumStrips();
+      }
+
+      /** Reset-Funktion: Farben löschen, Einteilungen = 1, Summe ausblenden */
+      function resetAll() {
+        // Quellen zurücksetzen
+        state.sources.forEach(source => {
+          source.divisions = 1;
+          source.layers.forEach(layer => {
+            layer.intervals = [];
+          });
+        });
+
+        // Summe-Einteilung zurücksetzen
+        state.sum.divisions = 1;
+
+        // Summe ausblenden
+        const sumToggle = document.getElementById('toggle-sum');
+        if (sumToggle) {
+          sumToggle.checked = false;
+        }
+
+        // neu zeichnen
+        renderSourceStrip(0);
+        renderSourceStrip(1);
+        renderSumStrips();
+      }
+
+      function init() {
+        // 1. & 2. Bruch
+        document.querySelectorAll('.strip-row[data-role="source"]').forEach(function (row) {
+          const sourceIndex = parseInt(row.dataset.sourceIndex, 10);
+          const strips = row.querySelectorAll('.fraction-strip-container .fraction-strip');
+          const input   = row.querySelector('.division-input');
+          const buttons = row.querySelectorAll('.controls .step-btn');
+          const addBtn  = row.querySelector('.add-layer-btn');
+          const removeBtn = row.querySelector('.remove-layer-btn');
+
+          strips.forEach(function (stripEl) {
+            stripEl.addEventListener('click', handleSourceStripClick);
+          });
+
+          if (input) {
+            input.addEventListener('change', function () {
+              let val = parseInt(input.value, 10);
+              if (Number.isNaN(val)) {
+                val = state.sources[sourceIndex].divisions;
+              }
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sources[sourceIndex].divisions = val;
+              renderSourceStrip(sourceIndex);
+              renderSumStrips();
+            });
+          }
+
+          buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const dir = parseInt(btn.dataset.dir, 10) || 0;
+              let val = state.sources[sourceIndex].divisions + dir;
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sources[sourceIndex].divisions = val;
+              renderSourceStrip(sourceIndex);
+              renderSumStrips();
+            });
+          });
+
+          if (addBtn) {
+            addBtn.addEventListener('click', function () {
+              addLayerToSource(sourceIndex);
+            });
+          }
+
+          if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+              removeLayerFromSource(sourceIndex);
+            });
+          }
+
+          updateLayerButtons(sourceIndex);
+        });
+
+        // Ergebnis-Kontrollen (Summe)
+        const sumMainLine = document.querySelector('.sum-line[data-result-index="0"]');
+        if (sumMainLine) {
+          const input   = sumMainLine.querySelector('.division-input');
+          const buttons = sumMainLine.querySelectorAll('.controls .step-btn');
+
+          if (input) {
+            input.addEventListener('change', function () {
+              let val = parseInt(input.value, 10);
+              if (Number.isNaN(val)) {
+                val = state.sum.divisions;
+              }
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sum.divisions = val;
+              renderSumStrips();
+            });
+          }
+
+          buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const dir = parseInt(btn.dataset.dir, 10) || 0;
+              let val = state.sum.divisions + dir;
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sum.divisions = val;
+              renderSumStrips();
+            });
+          });
+        }
+
+        const sumToggle = document.getElementById('toggle-sum');
+        if (sumToggle) {
+          sumToggle.addEventListener('change', renderSumStrips);
+        }
+
+        // Reset-Button
+        const resetBtn = document.getElementById('reset-button');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', resetAll);
+        }
+
+        // Startzustand
+        renderSourceStrip(0);
+        renderSourceStrip(1);
+        renderSumStrips();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+
+  <p><a href="index.html">← Zurück zur Startseite</a></p>
+
+</body>
+</html>
