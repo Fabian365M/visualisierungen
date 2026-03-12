@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interaktiv Brüche multiplizieren</title>
+  <style>
+    :root {
+      --rect-width: 24cm;
+      --rect-height: 12cm;
+      --line-color: #111111;
+      --blue: #2f6fdd;
+      --yellow: #f2d21b;
+      --bg: #ffffff;
+      --panel-gap: 20px;
+      --control-size: 46px;
+      --input-width: 76px;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --font: Arial, Helvetica, sans-serif;
+      --grid-width: 4;
+      --border-width: 7;
+      --hint-color: #1f2a5a;
+      --hint-size: 1rem;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: var(--font);
+      background: #f7f8fb;
+      color: #111;
+    }
+
+    .app {
+      max-width: 1220px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 24px 28px;
+      position: relative;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.15;
+      text-align: left;
+    }
+
+    .reset-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-size: var(--hint-size);
+      background: #eef2ff;
+      color: var(--hint-color);
+      transition: transform 0.08s ease, background 0.2s ease;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    .reset-btn:hover { background: #e3e9ff; }
+    .reset-btn:active { transform: translateY(1px); }
+
+    .reset-btn svg {
+      flex: 0 0 auto;
+      align-self: center;
+    }
+
+    .reset-label {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      line-height: 1.15;
+      text-align: left;
+      white-space: normal;
+    }
+
+    .layout-wrap {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+      align-items: start;
+      justify-content: start;
+      gap: var(--panel-gap);
+    }
+
+    .rect-wrap {
+      grid-column: 1;
+      grid-row: 1;
+      position: relative;
+      width: var(--rect-width);
+      height: var(--rect-height);
+      min-width: 520px;
+      min-height: 260px;
+      max-width: 100%;
+      max-height: 100%;
+      touch-action: manipulation;
+      user-select: none;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      border: 2px solid transparent;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2;
+    }
+
+    .control-right {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
+      justify-self: center;
+      transform: translateX(14px);
+    }
+
+    .control-bottom {
+      grid-column: 1;
+      grid-row: 2;
+      justify-self: center;
+    }
+
+    .annotation {
+      grid-column: 2;
+      grid-row: 2;
+      justify-self: end;
+      align-self: center;
+      font-size: var(--hint-size);
+      line-height: 1.15;
+      color: var(--hint-color);
+      text-align: right;
+      z-index: 2;
+      white-space: nowrap;
+      padding-right: 8px;
+    }
+
+    .arrow-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 1;
+    }
+
+    .arrow-overlay line {
+      stroke: var(--hint-color);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .arrow-btn {
+      width: var(--control-size);
+      height: var(--control-size);
+      border: none;
+      border-radius: 12px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      background: #f0f2f7;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .arrow-btn:hover { background: #e5e9f2; }
+    .arrow-btn:active { transform: translateY(1px); }
+
+    .number-input {
+      width: var(--input-width);
+      height: var(--control-size);
+      text-align: center;
+      font-size: 1.2rem;
+      border: 2px solid #c7cede;
+      border-radius: 12px;
+      background: #fff;
+      padding: 0 8px;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .number-input::-webkit-outer-spin-button,
+    .number-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .app {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .app { padding: 18px; }
+
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+      }
+
+      .rect-wrap {
+        width: min(24cm, calc(100vw - 72px));
+        height: min(12cm, calc((100vw - 72px) / 2));
+        min-width: 280px;
+        min-height: 140px;
+      }
+
+      .control-right {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: center;
+      }
+
+      .control-bottom {
+        grid-column: 1;
+        grid-row: 3;
+      }
+
+      .annotation {
+        grid-column: 1;
+        grid-row: 4;
+        justify-self: center;
+        text-align: center;
+        padding-right: 0;
+      }
+
+      .arrow-overlay {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Interaktiv Brüche multiplizieren</h1>
+      <button class="reset-btn" id="resetBtn" type="button" aria-label="Farben und Einteilungen zurücksetzen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 1-2.34-5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 4v7h-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="reset-label">
+          <span>Farben und Einteilungen</span>
+          <span>zurücksetzen</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="layout-wrap" id="layoutWrap">
+      <svg class="arrow-overlay" id="arrowOverlay" aria-hidden="true">
+        <defs>
+          <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--hint-color)"></path>
+          </marker>
+        </defs>
+        <line id="arrowToBottom" marker-end="url(#arrowHead)"></line>
+        <line id="arrowToRight" marker-end="url(#arrowHead)"></line>
+      </svg>
+
+      <div class="layout">
+        <div class="rect-wrap">
+          <canvas id="fractionCanvas" aria-label="Interaktive Rechteckdarstellung für Bruchmultiplikation"></canvas>
+        </div>
+
+        <div class="control-group control-right" id="rightTarget" aria-label="Vertikale Teilung einstellen">
+          <button class="arrow-btn" id="vDec" type="button" aria-label="Vertikale Teilung verringern">&#9664;</button>
+          <input class="number-input" id="vInput" type="number" min="1" max="42" step="1" value="1" inputmode="numeric" />
+          <button class="arrow-btn" id="vInc" type="button" aria-label="Vertikale Teilung erhöhen">&#9654;</button>
+        </div>
+
+        <div class="control-group control-bottom" id="bottomTarget" aria-label="Horizontale Teilung einstellen">
+          <button class="arrow-btn" id="hDec" type="button" aria-label="Horizontale Teilung verringern">&#9664;</button>
+          <input class="number-input" id="hInput" type="number" min="1" max="42" step="1" value="1" inputmode="numeric" />
+          <button class="arrow-btn" id="hInc" type="button" aria-label="Horizontale Teilung erhöhen">&#9654;</button>
+        </div>
+
+        <div class="annotation" id="annotationText">Einteilung verändern</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const MAX_DIVISIONS = 42;
+      const MIN_DIVISIONS = 1;
+      const EPS = 1e-9;
+
+      const canvas = document.getElementById('fractionCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const vInput = document.getElementById('vInput');
+      const hInput = document.getElementById('hInput');
+      const vDec = document.getElementById('vDec');
+      const vInc = document.getElementById('vInc');
+      const hDec = document.getElementById('hDec');
+      const hInc = document.getElementById('hInc');
+      const resetBtn = document.getElementById('resetBtn');
+      const layoutWrap = document.getElementById('layoutWrap');
+      const annotationText = document.getElementById('annotationText');
+      const bottomTarget = document.getElementById('bottomTarget');
+      const rightTarget = document.getElementById('rightTarget');
+      const rightInput = document.getElementById('vInput');
+      const rectWrap = document.querySelector('.rect-wrap');
+      const arrowOverlay = document.getElementById('arrowOverlay');
+      const arrowToBottom = document.getElementById('arrowToBottom');
+      const arrowToRight = document.getElementById('arrowToRight');
+
+      const state = {
+        vertical: 1,
+        horizontal: 1,
+        regions: []
+      };
+
+      const overlayState = {
+        initialized: false,
+        annotationShiftX: 0,
+        bottomLine: null,
+        rightLine: null
+      };
+
+      function clampValue(value) {
+        let n = parseInt(value, 10);
+        if (Number.isNaN(n)) n = 1;
+        if (n < MIN_DIVISIONS) n = MIN_DIVISIONS;
+        if (n > MAX_DIVISIONS) n = MAX_DIVISIONS;
+        return n;
+      }
+
+      function syncInputs() {
+        vInput.value = state.vertical;
+        hInput.value = state.horizontal;
+      }
+
+      function nearlyEqual(a, b) {
+        return Math.abs(a - b) < EPS;
+      }
+
+      function rectArea(rect) {
+        return Math.max(0, rect.x2 - rect.x1) * Math.max(0, rect.y2 - rect.y1);
+      }
+
+      function overlaps(a, b) {
+        return a.x1 < b.x2 - EPS && a.x2 > b.x1 + EPS && a.y1 < b.y2 - EPS && a.y2 > b.y1 + EPS;
+      }
+
+      function intersection(a, b) {
+        if (!overlaps(a, b)) return null;
+        const rect = {
+          x1: Math.max(a.x1, b.x1),
+          y1: Math.max(a.y1, b.y1),
+          x2: Math.min(a.x2, b.x2),
+          y2: Math.min(a.y2, b.y2)
+        };
+        return rectArea(rect) > EPS ? rect : null;
+      }
+
+      function subtractRect(base, cutter) {
+        const cut = intersection(base, cutter);
+        if (!cut) return [base];
+
+        const parts = [];
+
+        if (base.y1 < cut.y1 - EPS) {
+          parts.push({ x1: base.x1, y1: base.y1, x2: base.x2, y2: cut.y1, state: base.state });
+        }
+        if (cut.y2 < base.y2 - EPS) {
+          parts.push({ x1: base.x1, y1: cut.y2, x2: base.x2, y2: base.y2, state: base.state });
+        }
+        if (base.x1 < cut.x1 - EPS) {
+          parts.push({ x1: base.x1, y1: cut.y1, x2: cut.x1, y2: cut.y2, state: base.state });
+        }
+        if (cut.x2 < base.x2 - EPS) {
+          parts.push({ x1: cut.x2, y1: cut.y1, x2: base.x2, y2: cut.y2, state: base.state });
+        }
+
+        return parts.filter(part => rectArea(part) > EPS);
+      }
+
+      function canMerge(a, b) {
+        if (a.state !== b.state) return false;
+
+        const sameVerticalSpan = nearlyEqual(a.y1, b.y1) && nearlyEqual(a.y2, b.y2);
+        const sameHorizontalSpan = nearlyEqual(a.x1, b.x1) && nearlyEqual(a.x2, b.x2);
+
+        const touchHorizontally = sameVerticalSpan && (nearlyEqual(a.x2, b.x1) || nearlyEqual(b.x2, a.x1));
+        const touchVertically = sameHorizontalSpan && (nearlyEqual(a.y2, b.y1) || nearlyEqual(b.y2, a.y1));
+
+        return touchHorizontally || touchVertically;
+      }
+
+      function mergeTwo(a, b) {
+        return {
+          x1: Math.min(a.x1, b.x1),
+          y1: Math.min(a.y1, b.y1),
+          x2: Math.max(a.x2, b.x2),
+          y2: Math.max(a.y2, b.y2),
+          state: a.state
+        };
+      }
+
+      function mergeRegions(regions) {
+        const merged = regions.slice();
+        let changed = true;
+
+        while (changed) {
+          changed = false;
+          outer:
+          for (let i = 0; i < merged.length; i++) {
+            for (let j = i + 1; j < merged.length; j++) {
+              if (canMerge(merged[i], merged[j])) {
+                merged[i] = mergeTwo(merged[i], merged[j]);
+                merged.splice(j, 1);
+                changed = true;
+                break outer;
+              }
+            }
+          }
+        }
+
+        return merged;
+      }
+
+      function setRegionState(region, newState) {
+        const next = [];
+
+        for (const existing of state.regions) {
+          const fragments = subtractRect(existing, region);
+          next.push(...fragments);
+        }
+
+        if (newState !== 0) {
+          next.push({ ...region, state: newState });
+        }
+
+        state.regions = mergeRegions(next);
+      }
+
+      function inspectRegion(region) {
+        const totalArea = rectArea(region);
+        let coveredArea = 0;
+        let blueArea = 0;
+        let yellowArea = 0;
+        let hasBlue = false;
+        let hasYellow = false;
+
+        for (const existing of state.regions) {
+          const cut = intersection(existing, region);
+          if (!cut) continue;
+          const area = rectArea(cut);
+          coveredArea += area;
+          if (existing.state === 1) {
+            hasBlue = true;
+            blueArea += area;
+          } else if (existing.state === 2) {
+            hasYellow = true;
+            yellowArea += area;
+          }
+        }
+
+        if (coveredArea < EPS) {
+          return { type: 'white', hasBlue: false, hasYellow: false };
+        }
+
+        if (Math.abs(coveredArea - totalArea) < EPS) {
+          if (Math.abs(blueArea - totalArea) < EPS) {
+            return { type: 'blue', hasBlue: true, hasYellow: false };
+          }
+          if (Math.abs(yellowArea - totalArea) < EPS) {
+            return { type: 'yellow', hasBlue: false, hasYellow: true };
+          }
+        }
+
+        return { type: 'mixed', hasBlue, hasYellow };
+      }
+
+      function nextStateFromInspection(info) {
+        if (info.type === 'white') return 1;
+        if (info.type === 'blue') return 2;
+        if (info.type === 'yellow') return 1;
+        if (info.hasYellow) return 1;
+        if (info.hasBlue) return 2;
+        return 1;
+      }
+
+      function getCurrentCell(col, row) {
+        return {
+          x1: col / state.vertical,
+          x2: (col + 1) / state.vertical,
+          y1: row / state.horizontal,
+          y2: (row + 1) / state.horizontal
+        };
+      }
+
+      function getPointerPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = event.clientX ?? (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+        const clientY = event.clientY ?? (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+        const x = ((clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((clientY - rect.top) / rect.height) * canvas.height;
+        return { x, y };
+      }
+
+      function getCellFromCanvasPoint(x, y) {
+        const col = Math.min(state.vertical - 1, Math.max(0, Math.floor((x / canvas.width) * state.vertical)));
+        const row = Math.min(state.horizontal - 1, Math.max(0, Math.floor((y / canvas.height) * state.horizontal)));
+        return { col, row };
+      }
+
+      function cycleCellAtPoint(x, y) {
+        const { col, row } = getCellFromCanvasPoint(x, y);
+        const cell = getCurrentCell(col, row);
+        const info = inspectRegion(cell);
+        const newState = nextStateFromInspection(info);
+        setRegionState(cell, newState);
+        draw();
+      }
+
+      function resizeCanvasForDisplay() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const targetWidth = Math.max(1, Math.round(rect.width * dpr));
+        const targetHeight = Math.max(1, Math.round(rect.height * dpr));
+
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+        }
+      }
+
+      function drawFills() {
+        const styles = getComputedStyle(document.documentElement);
+        const blue = styles.getPropertyValue('--blue').trim();
+        const yellow = styles.getPropertyValue('--yellow').trim();
+
+        for (const region of state.regions) {
+          const x = region.x1 * canvas.width;
+          const y = region.y1 * canvas.height;
+          const w = (region.x2 - region.x1) * canvas.width;
+          const h = (region.y2 - region.y1) * canvas.height;
+          ctx.fillStyle = region.state === 1 ? blue : yellow;
+          ctx.fillRect(x, y, w, h);
+        }
+      }
+
+      function drawGridLines() {
+        const styles = getComputedStyle(document.documentElement);
+        const lineColor = styles.getPropertyValue('--line-color').trim() || '#111';
+        const dpr = window.devicePixelRatio || 1;
+        const gridWidth = parseFloat(styles.getPropertyValue('--grid-width')) || 4;
+
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = gridWidth * dpr;
+        ctx.beginPath();
+
+        for (let i = 1; i < state.vertical; i++) {
+          const x = (i / state.vertical) * canvas.width;
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+        }
+
+        for (let j = 1; j < state.horizontal; j++) {
+          const y = (j / state.horizontal) * canvas.height;
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+        }
+
+        ctx.stroke();
+      }
+
+      function drawOuterBorder() {
+        const styles = getComputedStyle(document.documentElement);
+        const dpr = window.devicePixelRatio || 1;
+        const borderWidth = parseFloat(styles.getPropertyValue('--border-width')) || 9;
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = borderWidth * dpr;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function cmToPixels(cmValue) {
+        const probe = document.createElement('div');
+        probe.style.position = 'absolute';
+        probe.style.left = '-1000px';
+        probe.style.top = '-1000px';
+        probe.style.width = `${cmValue}cm`;
+        probe.style.height = '1px';
+        document.body.appendChild(probe);
+        const pixels = probe.getBoundingClientRect().width;
+        probe.remove();
+        return pixels;
+      }
+
+      function setLine(line, x1, y1, x2, y2) {
+        line.setAttribute('x1', x1.toFixed(2));
+        line.setAttribute('y1', y1.toFixed(2));
+        line.setAttribute('x2', x2.toFixed(2));
+        line.setAttribute('y2', y2.toFixed(2));
+      }
+
+      function updateArrows(forceRecalc = false) {
+        if (window.matchMedia('(max-width: 900px)').matches) {
+          annotationText.style.transform = '';
+          overlayState.initialized = false;
+          return;
+        }
+
+        if (!overlayState.initialized || forceRecalc) {
+          annotationText.style.transform = '';
+
+          const wrapRect = layoutWrap.getBoundingClientRect();
+          const inputRect = rightInput.getBoundingClientRect();
+          const labelBaseRect = annotationText.getBoundingClientRect();
+          const bottomRect = bottomTarget.getBoundingClientRect();
+          const rectRect = rectWrap.getBoundingClientRect();
+          const gapSide = cmToPixels(2);
+          const gapTop = cmToPixels(1);
+
+          const desiredCenterX = inputRect.left - wrapRect.left + inputRect.width / 2;
+          const naturalCenterX = labelBaseRect.left - wrapRect.left + labelBaseRect.width / 2;
+          overlayState.annotationShiftX = desiredCenterX - naturalCenterX;
+          annotationText.style.transform = `translateX(${overlayState.annotationShiftX.toFixed(2)}px)`;
+
+          const labelRect = annotationText.getBoundingClientRect();
+          arrowOverlay.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
+
+          const labelCenterX = labelRect.left - wrapRect.left + labelRect.width / 2;
+          overlayState.bottomLine = {
+            x1: labelRect.left - wrapRect.left - gapSide,
+            y1: labelRect.top - wrapRect.top + labelRect.height * 0.55,
+            x2: bottomRect.right - wrapRect.left + gapSide,
+            y2: bottomRect.top - wrapRect.top + bottomRect.height / 2
+          };
+
+          overlayState.rightLine = {
+            x1: labelCenterX,
+            y1: rectRect.bottom - wrapRect.top,
+            x2: labelCenterX,
+            y2: inputRect.bottom - wrapRect.top + gapTop
+          };
+
+          overlayState.initialized = true;
+        } else {
+          annotationText.style.transform = `translateX(${overlayState.annotationShiftX.toFixed(2)}px)`;
+        }
+
+        if (overlayState.bottomLine) {
+          setLine(
+            arrowToBottom,
+            overlayState.bottomLine.x1,
+            overlayState.bottomLine.y1,
+            overlayState.bottomLine.x2,
+            overlayState.bottomLine.y2
+          );
+        }
+
+        if (overlayState.rightLine) {
+          setLine(
+            arrowToRight,
+            overlayState.rightLine.x1,
+            overlayState.rightLine.y1,
+            overlayState.rightLine.x2,
+            overlayState.rightLine.y2
+          );
+        }
+      }
+
+      function draw() {
+        resizeCanvasForDisplay();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawFills();
+        drawGridLines();
+        drawOuterBorder();
+        updateArrows();
+      }
+
+      function setVertical(value) {
+        state.vertical = clampValue(value);
+        syncInputs();
+        draw();
+      }
+
+      function setHorizontal(value) {
+        state.horizontal = clampValue(value);
+        syncInputs();
+        draw();
+      }
+
+      function resetAll() {
+        state.vertical = 1;
+        state.horizontal = 1;
+        state.regions = [];
+        syncInputs();
+        draw();
+      }
+
+      function stepValue(current, delta) {
+        return clampValue(current + delta);
+      }
+
+      function bindSmartInput(input, setter) {
+        let replaceOnNextDigit = false;
+
+        function activateReplaceMode() {
+          replaceOnNextDigit = input.value === '1';
+        }
+
+        input.addEventListener('focus', activateReplaceMode);
+        input.addEventListener('click', activateReplaceMode);
+
+        input.addEventListener('keydown', (event) => {
+          if (replaceOnNextDigit && /^[0-9]$/.test(event.key)) {
+            event.preventDefault();
+            input.value = event.key;
+            replaceOnNextDigit = false;
+            setter(input.value);
+            requestAnimationFrame(() => {
+              const pos = input.value.length;
+              input.setSelectionRange(pos, pos);
+            });
+            return;
+          }
+
+          if (event.key === 'Backspace' || event.key === 'Delete') {
+            replaceOnNextDigit = false;
+            return;
+          }
+
+          if (event.key.length === 1) {
+            replaceOnNextDigit = false;
+          }
+        });
+
+        input.addEventListener('input', () => {
+          replaceOnNextDigit = false;
+          setter(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+          replaceOnNextDigit = false;
+          setter(input.value);
+        });
+      }
+
+      vDec.addEventListener('click', () => setVertical(stepValue(state.vertical, -1)));
+      vInc.addEventListener('click', () => setVertical(stepValue(state.vertical, 1)));
+      hDec.addEventListener('click', () => setHorizontal(stepValue(state.horizontal, -1)));
+      hInc.addEventListener('click', () => setHorizontal(stepValue(state.horizontal, 1)));
+
+      bindSmartInput(vInput, setVertical);
+      bindSmartInput(hInput, setHorizontal);
+
+      resetBtn.addEventListener('click', resetAll);
+
+      canvas.addEventListener('click', (event) => {
+        const { x, y } = getPointerPosition(event);
+        cycleCellAtPoint(x, y);
+      });
+
+      canvas.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        const { x, y } = getPointerPosition(event);
+        cycleCellAtPoint(x, y);
+      }, { passive: false });
+
+      window.addEventListener('resize', () => {
+        updateArrows(true);
+        draw();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          resetAll();
+        }
+      });
+
+      syncInputs();
+      updateArrows(true);
+      draw();
+    })();
+  </script>
+</body>
+</html>

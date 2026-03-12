@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Interaktive Bruchstreifen – Bruchaddition</title>
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card-bg: #ffffff;
+      --border: #d0d4e4;
+      --accent: #3b82f6;
+      --strip-height: 60px;
+      --strip1-color: #15803d; /* dunkles Grün */
+      --strip2-color: #be185d; /* dunkles Rosa */
+      --strip-sum-color: #60a5fa; /* mittelhelles Blau */
+      --line-color: #111827;   /* Schwarz für Konturen & Teilungsstriche */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #e0ecff 0, #f7f7fb 45%, #f7f7fb 100%);
+      color: #111827;
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 2rem auto 3rem;
+      padding: 1.5rem 2rem 2rem;
+      background: var(--card-bg);
+      border-radius: 1.5rem;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.6rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* obere Zeile: Vorgehensweise links, Reset rechts */
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 3rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #6b7280;
+      line-height: 1.4;
+      flex: 1 1 auto;
+    }
+
+    .reset-area {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      margin-right: 1.5rem;
+      margin-left: 3rem; /* Abstand nach links zum Text */
+    }
+
+    .reset-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .reset-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .reset-text {
+      font-size: 0.95rem;
+      color: #6b7280;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    /* Überschrift für rechte Spalte (Einteilung verändern) */
+    .controls-column-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-top: 0.6rem;
+      margin-bottom: 0.3rem;
+      width: 160px;
+      margin-left: auto;
+      margin-right: 0.25rem;
+    }
+
+    .controls-column-header span {
+      line-height: 1.1;
+    }
+
+    .strip-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+      padding: 0.85rem 1rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+    }
+
+    .sum-row {
+      margin-top: 2.4rem;
+    }
+
+    .row-label {
+      flex: 0 0 90px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding-top: 0.4rem;
+    }
+
+    .strip-and-info {
+      flex: 1 1 260px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .strip-with-minus-row {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+
+    .fraction-strip-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1 1 auto;
+    }
+
+    .add-layer-btn,
+    .remove-layer-btn {
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 999px;
+      border: 1px dashed #9ca3af;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #4b5563;
+      padding: 0;
+    }
+
+    .add-layer-btn {
+      margin-top: 0.45rem;
+    }
+
+    .remove-layer-btn {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      transform: translateX(-120%);
+    }
+
+    .add-layer-btn:hover,
+    .remove-layer-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .add-layer-btn svg,
+    .remove-layer-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .fraction-strip {
+      position: relative;
+      height: var(--strip-height);
+      border-radius: 0;
+      background: #ffffff;
+      border: 3px solid var(--line-color);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .fraction-strip::before {
+      content: none;
+    }
+
+    .grid-layer,
+    .color-layer {
+      position: absolute;
+      inset: 0;
+    }
+
+    .grid-layer {
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .color-layer {
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .grid-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--line-color);
+      opacity: 0.75;
+      transform: translateX(-50%);
+    }
+
+    .color-block {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+    }
+
+    .color-block.color-1 {
+      background: var(--strip1-color);
+      opacity: 0.75;
+    }
+
+    .color-block.color-2 {
+      background: var(--strip2-color);
+      opacity: 0.8;
+    }
+
+    .color-block.color-sum {
+      background: var(--strip-sum-color);
+      opacity: 0.8;
+    }
+
+    .controls {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: auto;
+      margin-top: calc((var(--strip-height) - 2.1rem) / 2);
+    }
+
+    .step-btn {
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.05s ease-out, box-shadow 0.05s ease-out,
+        border-color 0.05s ease-out, background 0.05s ease-out;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+    }
+
+    .step-btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 3px 6px rgba(37, 99, 235, 0.18);
+    }
+
+    .step-btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      background: #eff6ff;
+    }
+
+    .division-input {
+      width: 3.5rem;
+      padding: 0.3rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      transition: border-color 0.08s ease-out, box-shadow 0.08s ease-out;
+    }
+
+    .division-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.35);
+    }
+
+    .division-input::-webkit-outer-spin-button,
+    .division-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .division-input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    @media (max-width: 720px) {
+      .header-row {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .reset-area {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .strip-row {
+        padding: 0.8rem 0.9rem 1rem;
+      }
+
+      .row-label {
+        flex-basis: 100%;
+        padding-top: 0;
+      }
+
+      .controls {
+        margin-left: 0;
+        margin-top: 0.5rem;
+      }
+
+      .fraction-strip {
+        height: 52px;
+      }
+
+      .controls-column-header {
+        align-items: flex-start;
+        width: auto;
+        margin-left: 0;
+        margin-right: 0;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Interaktive Bruchstreifen zur Bruchaddition</h1>
+
+    <div class="header-row">
+      <p class="subtitle">
+        Vorgehensweise:<br>
+        1) Stelle mit den Pfeiltasten rechts eine passende Einteilung des Bruchstreifens ein.<br>
+        2) Berühre die entstehenden Rechtecke, um die Teilflächen zu färben.<br>
+        3) Verändere die Einteilung, um den gleichen Anteil in anderen Einteilungen darzustellen.
+      </p>
+
+      <div class="reset-area">
+        <button class="reset-btn" id="reset-button"
+                type="button"
+                aria-label="Farben und Einteilung zurücksetzen">
+          ↺
+        </button>
+        <div class="reset-text">
+          <span>Farben und Einteilung</span><br>
+          <span>zurücksetzen</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-column-header">
+      <span>Einteilung</span>
+      <span>verändern</span>
+    </div>
+
+    <div class="strip-row" data-role="source" data-source-index="0">
+      <div class="row-label">1. Bruch</div>
+
+      <div class="strip-and-info">
+        <div class="strip-with-minus-row">
+          <button class="remove-layer-btn" type="button"
+                  data-source-index="0"
+                  aria-label="Letzten Bruchstreifen für 1. Bruch entfernen">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 14 L12 9 L17 14"
+                    fill="none"
+                    stroke="#4b5563"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="fraction-strip-container" data-source-index="0">
+            <div class="fraction-strip" data-layer-index="0" aria-label="Bruchstreifen 1">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+        </div>
+        <button class="add-layer-btn" type="button"
+                data-source-index="0"
+                aria-label="Weiteren Bruchstreifen für 1. Bruch hinzufügen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 12 L12 17 L17 12"
+                  fill="none"
+                  stroke="#4b5563"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="step-btn" data-dir="-1"
+                aria-label="Weniger Unterteilungen für 1. Bruch">◀</button>
+        <input class="division-input" type="number" min="1" max="30" value="1"
+               aria-label="Anzahl der Unterteilungen für 1. Bruch" />
+        <button class="step-btn" data-dir="1"
+                aria-label="Mehr Unterteilungen für 1. Bruch">▶</button>
+      </div>
+    </div>
+
+    <div class="strip-row" data-role="source" data-source-index="1">
+      <div class="row-label">2. Bruch</div>
+
+      <div class="strip-and-info">
+        <div class="strip-with-minus-row">
+          <button class="remove-layer-btn" type="button"
+                  data-source-index="1"
+                  aria-label="Letzten Bruchstreifen für 2. Bruch entfernen">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 14 L12 9 L17 14"
+                    fill="none"
+                    stroke="#4b5563"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="fraction-strip-container" data-source-index="1">
+            <div class="fraction-strip" data-layer-index="0" aria-label="Bruchstreifen 2">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+        </div>
+        <button class="add-layer-btn" type="button"
+                data-source-index="1"
+                aria-label="Weiteren Bruchstreifen für 2. Bruch hinzufügen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 12 L12 17 L17 12"
+                  fill="none"
+                  stroke="#4b5563"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="step-btn" data-dir="-1"
+                aria-label="Weniger Unterteilungen für 2. Bruch">◀</button>
+        <input class="division-input" type="number" min="1" max="30" value="1"
+               aria-label="Anzahl der Unterteilungen für 2. Bruch" />
+        <button class="step-btn" data-dir="1"
+                aria-label="Mehr Unterteilungen für 2. Bruch">▶</button>
+      </div>
+    </div>
+
+    <div class="strip-row sum-row" data-role="sum">
+      <div class="row-label">Summe</div>
+
+      <div class="strip-and-info">
+        <div class="strip-with-minus-row">
+          <button class="remove-layer-btn" type="button" id="sum-remove-layer-btn"
+                  aria-label="Letzten Bruchstreifen für Summe entfernen">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 14 L12 9 L17 14"
+                    fill="none"
+                    stroke="#4b5563"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="fraction-strip-container" data-role="sum-container">
+            <div class="fraction-strip" data-sum-layer-index="0" aria-label="Bruchstreifen Summe">
+              <div class="color-layer"></div>
+              <div class="grid-layer"></div>
+            </div>
+          </div>
+        </div>
+        <button class="add-layer-btn" type="button" id="sum-add-layer-btn"
+                aria-label="Weiteren Bruchstreifen für Summe hinzufügen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 12 L12 17 L17 12"
+                  fill="none"
+                  stroke="#4b5563"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="step-btn" data-dir="-1"
+                aria-label="Weniger Unterteilungen für Summe">◀</button>
+        <input class="division-input" type="number" min="1" max="30" value="1"
+               aria-label="Anzahl der Unterteilungen für Summe" />
+        <button class="step-btn" data-dir="1"
+                aria-label="Mehr Unterteilungen für Summe">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const MIN_DIV = 1;
+      const MAX_DIV = 30;
+      const MAX_LAYERS = 3;
+      const EPS = 1e-6;
+
+      const state = {
+        sources: [
+          { divisions: 1, layers: [{ intervals: [] }] },
+          { divisions: 1, layers: [{ intervals: [] }] }
+        ],
+        sum: {
+          divisions: 1,
+          layers: [{ intervals: [] }]
+        }
+      };
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function addInterval(intervals, start, end) {
+        start = Math.max(0, start);
+        end = Math.min(1, end);
+        if (end - start <= EPS) return intervals.slice();
+
+        const result = [];
+        let newStart = start;
+        let newEnd = end;
+        let inserted = false;
+
+        for (const seg of intervals) {
+          if (seg.end < newStart - EPS) {
+            result.push(seg);
+          } else if (seg.start > newEnd + EPS) {
+            if (!inserted) {
+              result.push({ start: newStart, end: newEnd });
+              inserted = true;
+            }
+            result.push(seg);
+          } else {
+            newStart = Math.min(newStart, seg.start);
+            newEnd = Math.max(newEnd, seg.end);
+          }
+        }
+
+        if (!inserted) {
+          result.push({ start: newStart, end: newEnd });
+        }
+        return result;
+      }
+
+      function subtractInterval(intervals, start, end) {
+        const result = [];
+        for (const seg of intervals) {
+          if (seg.end <= start + EPS || seg.start >= end - EPS) {
+            result.push(seg);
+          } else {
+            if (seg.start < start - EPS) {
+              const left = { start: seg.start, end: Math.max(seg.start, start) };
+              if (left.end - left.start > EPS) result.push(left);
+            }
+            if (seg.end > end + EPS) {
+              const right = { start: Math.min(seg.end, end), end: seg.end };
+              if (right.end - right.start > EPS) result.push(right);
+            }
+          }
+        }
+        return result;
+      }
+
+      function coverage(intervals, start, end) {
+        let covered = 0;
+        for (const seg of intervals) {
+          const s = Math.max(seg.start, start);
+          const e = Math.min(seg.end, end);
+          if (e > s) covered += e - s;
+        }
+        const length = end - start;
+        return length > 0 ? covered / length : 0;
+      }
+
+      function updateLayerButtons(sourceIndex) {
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+        const addBtn = row.querySelector('.add-layer-btn');
+        const removeBtn = row.querySelector('.remove-layer-btn');
+        const source = state.sources[sourceIndex];
+        if (addBtn) {
+          addBtn.style.display = source.layers.length >= MAX_LAYERS ? 'none' : '';
+        }
+        if (removeBtn) {
+          removeBtn.style.display = source.layers.length > 1 ? '' : 'none';
+        }
+      }
+
+      function updateSumLayerButtons() {
+        const row = document.querySelector('.strip-row[data-role="sum"]');
+        if (!row) return;
+        const addBtn = row.querySelector('#sum-add-layer-btn');
+        const removeBtn = row.querySelector('#sum-remove-layer-btn');
+        if (addBtn) {
+          addBtn.style.display = state.sum.layers.length >= MAX_LAYERS ? 'none' : '';
+        }
+        if (removeBtn) {
+          removeBtn.style.display = state.sum.layers.length > 1 ? '' : 'none';
+        }
+      }
+
+      function renderSourceStrip(sourceIndex) {
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+
+        const source = state.sources[sourceIndex];
+        const input = row.querySelector('.division-input');
+        if (input) {
+          input.value = source.divisions;
+        }
+
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const strips = container.querySelectorAll('.fraction-strip');
+        strips.forEach(function (stripEl, layerIndex) {
+          stripEl.dataset.layerIndex = String(layerIndex);
+          const gridLayer = stripEl.querySelector('.grid-layer');
+          const colorLayer = stripEl.querySelector('.color-layer');
+          const layer = source.layers[layerIndex];
+
+          if (gridLayer) {
+            gridLayer.innerHTML = '';
+            const n = source.divisions;
+            for (let i = 1; i < n; i++) {
+              const line = document.createElement('div');
+              line.className = 'grid-line';
+              line.style.left = (i / n * 100) + '%';
+              gridLayer.appendChild(line);
+            }
+          }
+
+          if (colorLayer) {
+            colorLayer.innerHTML = '';
+            if (!layer) return;
+            const colorClass = sourceIndex === 0 ? 'color-1' : 'color-2';
+            for (const seg of layer.intervals) {
+              const block = document.createElement('div');
+              block.className = 'color-block ' + colorClass;
+              block.style.left = (seg.start * 100) + '%';
+              block.style.width = ((seg.end - seg.start) * 100) + '%';
+              colorLayer.appendChild(block);
+            }
+          }
+        });
+
+        updateLayerButtons(sourceIndex);
+      }
+
+      function renderSumStrips() {
+        const row = document.querySelector('.strip-row[data-role="sum"]');
+        if (!row) return;
+
+        const input = row.querySelector('.division-input');
+        if (input) {
+          input.value = state.sum.divisions;
+        }
+
+        const container = row.querySelector('.fraction-strip-container[data-role="sum-container"]');
+        if (!container) return;
+
+        const strips = container.querySelectorAll('.fraction-strip');
+        strips.forEach(function (stripEl, layerIndex) {
+          stripEl.dataset.sumLayerIndex = String(layerIndex);
+          const gridLayer = stripEl.querySelector('.grid-layer');
+          const colorLayer = stripEl.querySelector('.color-layer');
+          const layer = state.sum.layers[layerIndex];
+
+          if (gridLayer) {
+            gridLayer.innerHTML = '';
+            const n = state.sum.divisions;
+            for (let i = 1; i < n; i++) {
+              const line = document.createElement('div');
+              line.className = 'grid-line';
+              line.style.left = (i / n * 100) + '%';
+              gridLayer.appendChild(line);
+            }
+          }
+
+          if (colorLayer) {
+            colorLayer.innerHTML = '';
+            if (!layer) return;
+            for (const seg of layer.intervals) {
+              const block = document.createElement('div');
+              block.className = 'color-block color-sum';
+              block.style.left = (seg.start * 100) + '%';
+              block.style.width = ((seg.end - seg.start) * 100) + '%';
+              colorLayer.appendChild(block);
+            }
+          }
+        });
+
+        updateSumLayerButtons();
+      }
+
+      function handleSourceStripClick(event) {
+        const stripEl = event.currentTarget;
+        const row = stripEl.closest('.strip-row[data-role="source"]');
+        if (!row) return;
+
+        const sourceIndex = parseInt(row.dataset.sourceIndex, 10);
+        const layerIndex = parseInt(stripEl.dataset.layerIndex || '0', 10);
+        const source = state.sources[sourceIndex];
+        const layer = source.layers[layerIndex];
+
+        const rect = stripEl.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const ratioRaw = x / rect.width;
+        const ratio = Math.min(Math.max(ratioRaw, 0), 1 - 1e-9);
+
+        const n = source.divisions;
+        let cellIndex = Math.floor(ratio * n);
+        if (cellIndex < 0) cellIndex = 0;
+        if (cellIndex >= n) cellIndex = n - 1;
+
+        const start = cellIndex / n;
+        const end = (cellIndex + 1) / n;
+
+        const cov = coverage(layer.intervals, start, end);
+
+        if (cov > 0.01) {
+          layer.intervals = subtractInterval(layer.intervals, start, end);
+        } else {
+          layer.intervals = addInterval(layer.intervals, start, end);
+        }
+
+        renderSourceStrip(sourceIndex);
+      }
+
+      function handleSumStripClick(event) {
+        const stripEl = event.currentTarget;
+        const layerIndex = parseInt(stripEl.dataset.sumLayerIndex || '0', 10);
+        const layer = state.sum.layers[layerIndex];
+        if (!layer) return;
+
+        const rect = stripEl.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const ratioRaw = x / rect.width;
+        const ratio = Math.min(Math.max(ratioRaw, 0), 1 - 1e-9);
+
+        const n = state.sum.divisions;
+        let cellIndex = Math.floor(ratio * n);
+        if (cellIndex < 0) cellIndex = 0;
+        if (cellIndex >= n) cellIndex = n - 1;
+
+        const start = cellIndex / n;
+        const end = (cellIndex + 1) / n;
+
+        const cov = coverage(layer.intervals, start, end);
+
+        if (cov > 0.01) {
+          layer.intervals = subtractInterval(layer.intervals, start, end);
+        } else {
+          layer.intervals = addInterval(layer.intervals, start, end);
+        }
+
+        renderSumStrips();
+      }
+
+      function addLayerToSource(sourceIndex) {
+        const source = state.sources[sourceIndex];
+        if (!source || source.layers.length >= MAX_LAYERS) return;
+
+        source.layers.push({ intervals: [] });
+
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const newLayerIndex = source.layers.length - 1;
+
+        const strip = document.createElement('div');
+        strip.className = 'fraction-strip';
+        strip.dataset.layerIndex = String(newLayerIndex);
+        strip.setAttribute(
+          'aria-label',
+          'Bruchstreifen ' + (sourceIndex + 1) + ' – Teil ' + (newLayerIndex + 1)
+        );
+        strip.innerHTML = '<div class="color-layer"></div><div class="grid-layer"></div>';
+
+        container.appendChild(strip);
+        strip.addEventListener('click', handleSourceStripClick);
+
+        renderSourceStrip(sourceIndex);
+      }
+
+      function removeLayerFromSource(sourceIndex) {
+        const source = state.sources[sourceIndex];
+        if (!source || source.layers.length <= 1) return;
+
+        source.layers.pop();
+
+        const row = document.querySelector(
+          '.strip-row[data-role="source"][data-source-index="' + sourceIndex + '"]'
+        );
+        if (!row) return;
+        const container = row.querySelector('.fraction-strip-container');
+        if (!container) return;
+
+        const lastStrip = container.querySelector('.fraction-strip:last-child');
+        if (lastStrip) {
+          container.removeChild(lastStrip);
+        }
+
+        renderSourceStrip(sourceIndex);
+      }
+
+      function addLayerToSum() {
+        if (state.sum.layers.length >= MAX_LAYERS) return;
+
+        state.sum.layers.push({ intervals: [] });
+
+        const row = document.querySelector('.strip-row[data-role="sum"]');
+        if (!row) return;
+
+        const container = row.querySelector('.fraction-strip-container[data-role="sum-container"]');
+        if (!container) return;
+
+        const newLayerIndex = state.sum.layers.length - 1;
+
+        const strip = document.createElement('div');
+        strip.className = 'fraction-strip';
+        strip.dataset.sumLayerIndex = String(newLayerIndex);
+        strip.setAttribute(
+          'aria-label',
+          'Bruchstreifen Summe – Teil ' + (newLayerIndex + 1)
+        );
+        strip.innerHTML = '<div class="color-layer"></div><div class="grid-layer"></div>';
+
+        container.appendChild(strip);
+        strip.addEventListener('click', handleSumStripClick);
+
+        renderSumStrips();
+      }
+
+      function removeLayerFromSum() {
+        if (state.sum.layers.length <= 1) return;
+
+        state.sum.layers.pop();
+
+        const row = document.querySelector('.strip-row[data-role="sum"]');
+        if (!row) return;
+
+        const container = row.querySelector('.fraction-strip-container[data-role="sum-container"]');
+        if (!container) return;
+
+        const lastStrip = container.querySelector('.fraction-strip:last-child');
+        if (lastStrip) {
+          container.removeChild(lastStrip);
+        }
+
+        renderSumStrips();
+      }
+
+      function resetAll() {
+        state.sources.forEach(source => {
+          source.divisions = 1;
+          source.layers.forEach(layer => {
+            layer.intervals = [];
+          });
+        });
+
+        state.sum.divisions = 1;
+        state.sum.layers.forEach(layer => {
+          layer.intervals = [];
+        });
+
+        renderSourceStrip(0);
+        renderSourceStrip(1);
+        renderSumStrips();
+      }
+
+      function init() {
+        document.querySelectorAll('.strip-row[data-role="source"]').forEach(function (row) {
+          const sourceIndex = parseInt(row.dataset.sourceIndex, 10);
+          const strips = row.querySelectorAll('.fraction-strip-container .fraction-strip');
+          const input = row.querySelector('.division-input');
+          const buttons = row.querySelectorAll('.controls .step-btn');
+          const addBtn = row.querySelector('.add-layer-btn');
+          const removeBtn = row.querySelector('.remove-layer-btn');
+
+          strips.forEach(function (stripEl) {
+            stripEl.addEventListener('click', handleSourceStripClick);
+          });
+
+          if (input) {
+            input.addEventListener('change', function () {
+              let val = parseInt(input.value, 10);
+              if (Number.isNaN(val)) {
+                val = state.sources[sourceIndex].divisions;
+              }
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sources[sourceIndex].divisions = val;
+              renderSourceStrip(sourceIndex);
+            });
+          }
+
+          buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const dir = parseInt(btn.dataset.dir, 10) || 0;
+              let val = state.sources[sourceIndex].divisions + dir;
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sources[sourceIndex].divisions = val;
+              renderSourceStrip(sourceIndex);
+            });
+          });
+
+          if (addBtn) {
+            addBtn.addEventListener('click', function () {
+              addLayerToSource(sourceIndex);
+            });
+          }
+
+          if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+              removeLayerFromSource(sourceIndex);
+            });
+          }
+
+          updateLayerButtons(sourceIndex);
+        });
+
+        const sumRow = document.querySelector('.strip-row[data-role="sum"]');
+        if (sumRow) {
+          const strips = sumRow.querySelectorAll('.fraction-strip-container .fraction-strip');
+          const input = sumRow.querySelector('.division-input');
+          const buttons = sumRow.querySelectorAll('.controls .step-btn');
+          const addBtn = sumRow.querySelector('#sum-add-layer-btn');
+          const removeBtn = sumRow.querySelector('#sum-remove-layer-btn');
+
+          strips.forEach(function (stripEl) {
+            stripEl.addEventListener('click', handleSumStripClick);
+          });
+
+          if (input) {
+            input.addEventListener('change', function () {
+              let val = parseInt(input.value, 10);
+              if (Number.isNaN(val)) {
+                val = state.sum.divisions;
+              }
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sum.divisions = val;
+              renderSumStrips();
+            });
+          }
+
+          buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const dir = parseInt(btn.dataset.dir, 10) || 0;
+              let val = state.sum.divisions + dir;
+              val = clamp(val, MIN_DIV, MAX_DIV);
+              state.sum.divisions = val;
+              renderSumStrips();
+            });
+          });
+
+          if (addBtn) {
+            addBtn.addEventListener('click', addLayerToSum);
+          }
+
+          if (removeBtn) {
+            removeBtn.addEventListener('click', removeLayerFromSum);
+          }
+
+          updateSumLayerButtons();
+        }
+
+        const resetBtn = document.getElementById('reset-button');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', resetAll);
+        }
+
+        renderSourceStrip(0);
+        renderSourceStrip(1);
+        renderSumStrips();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
