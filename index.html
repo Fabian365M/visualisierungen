@@ -87,11 +87,6 @@
       gap:18px;
     }
 
-    .card-link{
-      text-decoration:none;
-      color:inherit;
-    }
-
     .card{
       position:relative;
       overflow:hidden;
@@ -154,16 +149,42 @@
       line-height:1.65;
     }
 
-    .button{
+    .button-group{
       position:relative;
       z-index:1;
-      display:inline-block;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-top:18px;
+    }
+
+    .button{
+      display:block;
+      width:100%;
+      text-align:center;
       padding:14px 18px;
       border-radius:14px;
-      background:linear-gradient(135deg, var(--blue), var(--violet));
-      color:#fff;
+      text-decoration:none;
       font-weight:700;
       letter-spacing:0.01em;
+      transition:transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .button:hover{
+      transform:translateY(-1px);
+      opacity:0.96;
+    }
+
+    .button-primary{
+      background:linear-gradient(135deg, var(--blue), var(--violet));
+      color:#fff;
+      box-shadow:0 10px 22px rgba(37, 99, 235, 0.22);
+    }
+
+    .button-secondary{
+      background:#f8fafc;
+      color:#1e293b;
+      border:1px solid #cbd5e1;
     }
 
     .footer-note{
@@ -186,7 +207,7 @@
 <body>
   <main class="container">
     <section class="hero">
-     
+      <div class="badge">Mathematikdidaktisch fundierte Visualisierungen</div>
 
       <h1>Mathematik-Visualisierungen</h1>
 
@@ -202,32 +223,46 @@
       <h2 class="section-title">Inhalte</h2>
 
       <div class="grid">
-        <a class="card-link" href="visualisierung1.html">
-          <article class="card">
-            <div class="card-number">1</div>
-            <h3>Interaktive Bruchstreifen zur Addition von Brüchen</h3>
-            <p>
-              Visualisierung 1 – Eine interaktive Unterstützung zum Verstehen und Bearbeiten
-              von Additionsaufgaben mit Brüchen.
-            </p>
-            <span class="button">Zur Visualisierung 1</span>
-          </article>
-        </a>
+        <article class="card">
+          <div class="card-number">1</div>
+          <h3>Interaktive Bruchstreifen zur Addition von Brüchen</h3>
+          <p>
+            Visualisierung 1 – Eine interaktive Unterstützung zum Verstehen und Bearbeiten
+            von Additionsaufgaben mit Brüchen.
+          </p>
 
-        <a class="card-link" href="visualisierung2.html">
-          <article class="card">
-            <div class="card-number">2</div>
-            <h3>Interaktiv Brüche multiplizieren</h3>
-            <p>
-              Visualisierung 2 – Eine interaktive Umgebung zur Veranschaulichung
-              von Multiplikationsaufgaben mit Brüchen.
-            </p>
-            <span class="button">Zur Visualisierung 2</span>
-          </article>
-        </a>
+          <div class="button-group">
+            <a class="button button-primary" href="visualisierung1.html">
+              Zur Visualisierung 1
+            </a>
+            <a class="button button-secondary" href="visualisierung1-ergaenzungsaufgabe.html">
+              Zur Visualisierung 1 - Ergänzungsaufgabe
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-number">2</div>
+          <h3>Interaktiv Brüche multiplizieren</h3>
+          <p>
+            Visualisierung 2 – Eine interaktive Umgebung zur Veranschaulichung
+            von Multiplikationsaufgaben mit Brüchen.
+          </p>
+
+          <div class="button-group">
+            <a class="button button-primary" href="visualisierung2.html">
+              Zur Visualisierung 2
+            </a>
+            <a class="button button-secondary" href="visualisierung2-veraenderte-markierungslogik.html">
+              Zur Visualisierung 2 - veränderte Markierungslogik
+            </a>
+          </div>
+        </article>
       </div>
 
-    
+      <p class="footer-note">
+        Weitere Visualisierungen kannst du später einfach als neue HTML-Dateien ergänzen und hier verlinken.
+      </p>
     </section>
   </main>
 </body>
