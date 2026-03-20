@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interaktiv Brüche multiplizieren</title>
+  <style>
+    :root {
+      --rect-width: 24cm;
+      --rect-height: 12cm;
+      --line-color: #111111;
+      --light-blue: #7fb6ff;
+      --dark-blue: #3a68cb;
+      --bg: #ffffff;
+      --panel-gap: 20px;
+      --control-size: 46px;
+      --input-width: 76px;
+      --toggle-height: 42px;
+      --toggle-gap: 12px;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --font: Arial, Helvetica, sans-serif;
+      --grid-width: 2.5;
+      --border-width: 9;
+      --hint-color: #1f2a5a;
+      --hint-size: 1rem;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: var(--font);
+      background: #f7f8fb;
+      color: #111;
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 24px 28px;
+      position: relative;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.15;
+      text-align: left;
+    }
+
+    .reset-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-size: var(--hint-size);
+      background: #eef2ff;
+      color: var(--hint-color);
+      transition: transform 0.08s ease, background 0.2s ease;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    .reset-btn:hover { background: #e3e9ff; }
+    .reset-btn:active { transform: translateY(1px); }
+
+    .reset-btn svg {
+      flex: 0 0 auto;
+      align-self: center;
+    }
+
+    .reset-label {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      line-height: 1.15;
+      text-align: left;
+      white-space: normal;
+    }
+
+    .layout-wrap {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+      align-items: start;
+      justify-content: start;
+      gap: var(--panel-gap);
+    }
+
+    .rect-wrap {
+      grid-column: 1;
+      grid-row: 1;
+      position: relative;
+      width: var(--rect-width);
+      height: var(--rect-height);
+      min-width: 520px;
+      min-height: 260px;
+      max-width: 100%;
+      max-height: 100%;
+      touch-action: manipulation;
+      user-select: none;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      border: 2px solid transparent;
+    }
+
+    .toggle-btn {
+      min-height: var(--toggle-height);
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      line-height: 1.15;
+      background: #eef2ff;
+      color: var(--hint-color);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      white-space: nowrap;
+    }
+
+    .toggle-btn:hover { background: #e3e9ff; }
+    .toggle-btn:active { transform: translateY(1px); }
+
+    .right-stack {
+      grid-column: 2;
+      grid-row: 1;
+      position: relative;
+      width: max-content;
+      min-width: 280px;
+      height: var(--rect-height);
+      min-height: 260px;
+      justify-self: center;
+      align-self: stretch;
+      transform: translateX(14px);
+      z-index: 2;
+      overflow: visible;
+    }
+
+    .right-toggle {
+      position: absolute;
+      left: 50%;
+      top: calc(50% - (var(--control-size) / 2) - var(--toggle-gap) - var(--toggle-height));
+      transform: translateX(-50%);
+      z-index: 3;
+    }
+
+    .right-toggle:active {
+      transform: translateX(-50%) translateY(1px);
+    }
+
+    .control-right {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .bottom-wrap {
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      align-items: center;
+      justify-self: center;
+      gap: 22px;
+      z-index: 2;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .annotation {
+      grid-column: 2;
+      grid-row: 2;
+      justify-self: end;
+      align-self: center;
+      font-size: var(--hint-size);
+      line-height: 1.15;
+      color: var(--hint-color);
+      text-align: right;
+      z-index: 2;
+      white-space: nowrap;
+      padding-right: 8px;
+      will-change: transform;
+    }
+
+    .arrow-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 1;
+    }
+
+    .arrow-overlay line {
+      stroke: var(--hint-color);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .arrow-btn {
+      width: var(--control-size);
+      height: var(--control-size);
+      border: none;
+      border-radius: 12px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      background: #f0f2f7;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .arrow-btn:hover { background: #e5e9f2; }
+    .arrow-btn:active { transform: translateY(1px); }
+
+    .number-input {
+      width: var(--input-width);
+      height: var(--control-size);
+      text-align: center;
+      font-size: 1.2rem;
+      border: 2px solid #c7cede;
+      border-radius: 12px;
+      background: #fff;
+      padding: 0 8px;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .number-input::-webkit-outer-spin-button,
+    .number-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .app { max-width: 100%; }
+    }
+
+    @media (max-width: 980px) {
+      .app { padding: 18px; }
+
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto auto;
+      }
+
+      .rect-wrap {
+        width: min(24cm, calc(100vw - 72px));
+        height: min(12cm, calc((100vw - 72px) / 2));
+        min-width: 280px;
+        min-height: 140px;
+      }
+
+      .right-stack {
+        grid-column: 1;
+        grid-row: 2;
+        position: static;
+        height: auto;
+        min-height: 0;
+        justify-self: center;
+        transform: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .right-toggle,
+      .control-right {
+        position: static;
+        transform: none;
+      }
+
+      .right-toggle:active {
+        transform: translateY(1px);
+      }
+
+      .bottom-wrap {
+        grid-column: 1;
+        grid-row: 3;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .annotation {
+        grid-column: 1;
+        grid-row: 4;
+        justify-self: center;
+        text-align: center;
+        padding-right: 0;
+        transform: none !important;
+      }
+
+      .arrow-overlay { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Interaktiv Brüche multiplizieren</h1>
+      <button class="reset-btn" id="resetBtn" type="button" aria-label="Farben und Einteilungen zurücksetzen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 1-2.34-5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 4v7h-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="reset-label">
+          <span>Farben und Einteilungen</span>
+          <span>zurücksetzen</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="layout-wrap" id="layoutWrap">
+      <svg class="arrow-overlay" id="arrowOverlay" aria-hidden="true">
+        <defs>
+          <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--hint-color)"></path>
+          </marker>
+        </defs>
+        <line id="arrowToBottom" marker-end="url(#arrowHead)"></line>
+        <line id="arrowToRight" marker-end="url(#arrowHead)"></line>
+      </svg>
+
+      <div class="layout">
+        <div class="rect-wrap" id="rectWrap">
+          <canvas id="fractionCanvas" aria-label="Interaktive Rechteckdarstellung für Bruchmultiplikation"></canvas>
+        </div>
+
+        <div class="right-stack">
+          <button class="toggle-btn right-toggle" id="toggleVerticalBtn" type="button">Teilungsstriche ausblenden</button>
+          <div class="control-group control-right" id="rightTarget" aria-label="Vertikale Teilung einstellen">
+            <button class="arrow-btn" id="vDec" type="button" aria-label="Vertikale Teilung verringern">&#9664;</button>
+            <input class="number-input" id="vInput" type="number" min="1" max="42" step="1" value="1" inputmode="numeric" />
+            <button class="arrow-btn" id="vInc" type="button" aria-label="Vertikale Teilung erhöhen">&#9654;</button>
+          </div>
+        </div>
+
+        <div class="bottom-wrap">
+          <button class="toggle-btn" id="toggleHorizontalBtn" type="button">Teilungsstriche ausblenden</button>
+          <div class="control-group" id="bottomTarget" aria-label="Horizontale Teilung einstellen">
+            <button class="arrow-btn" id="hDec" type="button" aria-label="Horizontale Teilung verringern">&#9664;</button>
+            <input class="number-input" id="hInput" type="number" min="1" max="42" step="1" value="1" inputmode="numeric" />
+            <button class="arrow-btn" id="hInc" type="button" aria-label="Horizontale Teilung erhöhen">&#9654;</button>
+          </div>
+        </div>
+
+        <div class="annotation" id="annotationText">Einteilung verändern</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const MAX_DIVISIONS = 42;
+      const MIN_DIVISIONS = 1;
+      const EPS = 1e-9;
+      const BOUNDARY_EPS = 1e-6;
+
+      const canvas = document.getElementById('fractionCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const vInput = document.getElementById('vInput');
+      const hInput = document.getElementById('hInput');
+      const vDec = document.getElementById('vDec');
+      const vInc = document.getElementById('vInc');
+      const hDec = document.getElementById('hDec');
+      const hInc = document.getElementById('hInc');
+      const resetBtn = document.getElementById('resetBtn');
+      const toggleVerticalBtn = document.getElementById('toggleVerticalBtn');
+      const toggleHorizontalBtn = document.getElementById('toggleHorizontalBtn');
+
+      const layoutWrap = document.getElementById('layoutWrap');
+      const rectWrap = document.getElementById('rectWrap');
+      const annotationText = document.getElementById('annotationText');
+      const bottomTarget = document.getElementById('bottomTarget');
+      const rightInput = document.getElementById('vInput');
+      const arrowOverlay = document.getElementById('arrowOverlay');
+      const arrowToBottom = document.getElementById('arrowToBottom');
+      const arrowToRight = document.getElementById('arrowToRight');
+
+      const state = {
+        vertical: 1,
+        horizontal: 1,
+        verticalLineMode: 'full',
+        horizontalLineMode: 'full',
+        secondaryOrientation: null,
+        regions: []
+      };
+
+      const overlayState = {
+        initialized: false,
+        annotationShiftX: 0,
+        bottomLine: null,
+        rightLine: null
+      };
+
+      function clampValue(value) {
+        let n = parseInt(value, 10);
+        if (Number.isNaN(n)) n = 1;
+        if (n < MIN_DIVISIONS) n = MIN_DIVISIONS;
+        if (n > MAX_DIVISIONS) n = MAX_DIVISIONS;
+        return n;
+      }
+
+      function syncInputs() {
+        vInput.value = state.vertical;
+        hInput.value = state.horizontal;
+      }
+
+      function updateToggleButtons() {
+        toggleVerticalBtn.textContent = state.verticalLineMode === 'hidden' ? 'Teilungsstriche einblenden' : 'Teilungsstriche ausblenden';
+        toggleHorizontalBtn.textContent = state.horizontalLineMode === 'hidden' ? 'Teilungsstriche einblenden' : 'Teilungsstriche ausblenden';
+      }
+
+      function nearlyEqual(a, b) {
+        return Math.abs(a - b) < EPS;
+      }
+
+      function rectArea(rect) {
+        return Math.max(0, rect.x2 - rect.x1) * Math.max(0, rect.y2 - rect.y1);
+      }
+
+      function overlaps(a, b) {
+        return a.x1 < b.x2 - EPS && a.x2 > b.x1 + EPS && a.y1 < b.y2 - EPS && a.y2 > b.y1 + EPS;
+      }
+
+      function intersection(a, b) {
+        if (!overlaps(a, b)) return null;
+        const rect = {
+          x1: Math.max(a.x1, b.x1),
+          y1: Math.max(a.y1, b.y1),
+          x2: Math.min(a.x2, b.x2),
+          y2: Math.min(a.y2, b.y2)
+        };
+        return rectArea(rect) > EPS ? rect : null;
+      }
+
+      function subtractRect(base, cutter) {
+        const cut = intersection(base, cutter);
+        if (!cut) return [base];
+
+        const parts = [];
+        if (base.y1 < cut.y1 - EPS) parts.push({ x1: base.x1, y1: base.y1, x2: base.x2, y2: cut.y1, phase: base.phase });
+        if (cut.y2 < base.y2 - EPS) parts.push({ x1: base.x1, y1: cut.y2, x2: base.x2, y2: base.y2, phase: base.phase });
+        if (base.x1 < cut.x1 - EPS) parts.push({ x1: base.x1, y1: cut.y1, x2: cut.x1, y2: cut.y2, phase: base.phase });
+        if (cut.x2 < base.x2 - EPS) parts.push({ x1: cut.x2, y1: cut.y1, x2: base.x2, y2: cut.y2, phase: base.phase });
+        return parts.filter(part => rectArea(part) > EPS);
+      }
+
+      function canMerge(a, b) {
+        if (a.phase !== b.phase) return false;
+        const sameVerticalSpan = nearlyEqual(a.y1, b.y1) && nearlyEqual(a.y2, b.y2);
+        const sameHorizontalSpan = nearlyEqual(a.x1, b.x1) && nearlyEqual(a.x2, b.x2);
+        const touchHorizontally = sameVerticalSpan && (nearlyEqual(a.x2, b.x1) || nearlyEqual(b.x2, a.x1));
+        const touchVertically = sameHorizontalSpan && (nearlyEqual(a.y2, b.y1) || nearlyEqual(b.y2, a.y1));
+        return touchHorizontally || touchVertically;
+      }
+
+      function mergeTwo(a, b) {
+        return {
+          x1: Math.min(a.x1, b.x1),
+          y1: Math.min(a.y1, b.y1),
+          x2: Math.max(a.x2, b.x2),
+          y2: Math.max(a.y2, b.y2),
+          phase: a.phase
+        };
+      }
+
+      function mergeRegions(regions) {
+        const merged = regions.slice();
+        let changed = true;
+        while (changed) {
+          changed = false;
+          outer:
+          for (let i = 0; i < merged.length; i++) {
+            for (let j = i + 1; j < merged.length; j++) {
+              if (canMerge(merged[i], merged[j])) {
+                merged[i] = mergeTwo(merged[i], merged[j]);
+                merged.splice(j, 1);
+                changed = true;
+                break outer;
+              }
+            }
+          }
+        }
+        return merged;
+      }
+
+      function setRegionPhase(region, newPhase) {
+        const next = [];
+        for (const existing of state.regions) {
+          next.push(...subtractRect(existing, region));
+        }
+        if (newPhase !== 0) next.push({ ...region, phase: newPhase });
+        state.regions = mergeRegions(next);
+      }
+
+      function inspectRegion(region) {
+        const totalArea = rectArea(region);
+        let coveredArea = 0;
+        let phase1Area = 0;
+        let phase2Area = 0;
+        let hasPhase1 = false;
+        let hasPhase2 = false;
+
+        for (const existing of state.regions) {
+          const cut = intersection(existing, region);
+          if (!cut) continue;
+          const area = rectArea(cut);
+          coveredArea += area;
+          if (existing.phase === 1) {
+            hasPhase1 = true;
+            phase1Area += area;
+          } else if (existing.phase === 2) {
+            hasPhase2 = true;
+            phase2Area += area;
+          }
+        }
+
+        if (coveredArea < EPS) return { type: 'white', hasPhase1: false, hasPhase2: false };
+        if (Math.abs(coveredArea - totalArea) < EPS) {
+          if (Math.abs(phase1Area - totalArea) < EPS) return { type: 'light', hasPhase1: true, hasPhase2: false };
+          if (Math.abs(phase2Area - totalArea) < EPS) return { type: 'dark', hasPhase1: false, hasPhase2: true };
+        }
+        return { type: 'mixed', hasPhase1, hasPhase2 };
+      }
+
+      function nextPhaseFromInspection(info) {
+        if (info.type === 'white') return 1;
+        if (info.type === 'light') return 2;
+        if (info.type === 'dark') return 1;
+        if (info.hasPhase2) return 1;
+        if (info.hasPhase1) return 2;
+        return 1;
+      }
+
+      function getCurrentCell(col, row) {
+        return {
+          x1: col / state.vertical,
+          x2: (col + 1) / state.vertical,
+          y1: row / state.horizontal,
+          y2: (row + 1) / state.horizontal
+        };
+      }
+
+      function getPointerPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = event.clientX ?? (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+        const clientY = event.clientY ?? (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+        const x = ((clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((clientY - rect.top) / rect.height) * canvas.height;
+        return { x, y };
+      }
+
+      function getCellFromCanvasPoint(x, y) {
+        const col = Math.min(state.vertical - 1, Math.max(0, Math.floor((x / canvas.width) * state.vertical)));
+        const row = Math.min(state.horizontal - 1, Math.max(0, Math.floor((y / canvas.height) * state.horizontal)));
+        return { col, row };
+      }
+
+      function mergeIntervals(intervals) {
+        if (!intervals.length) return [];
+        intervals.sort((a, b) => a[0] - b[0]);
+        const merged = [intervals[0].slice()];
+        for (let i = 1; i < intervals.length; i++) {
+          const [start, end] = intervals[i];
+          const last = merged[merged.length - 1];
+          if (start <= last[1] + EPS) {
+            last[1] = Math.max(last[1], end);
+          } else {
+            merged.push([start, end]);
+          }
+        }
+        return merged;
+      }
+
+      function isColoredPoint(x, y) {
+        return state.regions.some(region => x > region.x1 + EPS && x < region.x2 - EPS && y > region.y1 + EPS && y < region.y2 - EPS);
+      }
+
+      function getVerticalCoverageIntervals(xNorm) {
+        const intervals = [];
+        for (const region of state.regions) {
+          if (xNorm >= region.x1 - EPS && xNorm <= region.x2 + EPS) intervals.push([region.y1, region.y2]);
+        }
+        return mergeIntervals(intervals);
+      }
+
+      function getHorizontalCoverageIntervals(yNorm) {
+        const intervals = [];
+        for (const region of state.regions) {
+          if (yNorm >= region.y1 - EPS && yNorm <= region.y2 + EPS) intervals.push([region.x1, region.x2]);
+        }
+        return mergeIntervals(intervals);
+      }
+
+      function getVerticalOuterBoundaryIntervals(xNorm) {
+        const points = [0, 1];
+        for (const region of state.regions) {
+          if (nearlyEqual(region.x1, xNorm) || nearlyEqual(region.x2, xNorm)) points.push(region.y1, region.y2);
+        }
+        const values = Array.from(new Set(points.map(v => Number(v.toFixed(8))))).sort((a, b) => a - b);
+        const intervals = [];
+        for (let i = 0; i < values.length - 1; i++) {
+          const y1 = values[i];
+          const y2 = values[i + 1];
+          if (y2 - y1 <= EPS) continue;
+          const midY = (y1 + y2) / 2;
+          const leftColored = isColoredPoint(xNorm - BOUNDARY_EPS, midY);
+          const rightColored = isColoredPoint(xNorm + BOUNDARY_EPS, midY);
+          if (leftColored !== rightColored) intervals.push([y1, y2]);
+        }
+        return mergeIntervals(intervals);
+      }
+
+      function getHorizontalOuterBoundaryIntervals(yNorm) {
+        const points = [0, 1];
+        for (const region of state.regions) {
+          if (nearlyEqual(region.y1, yNorm) || nearlyEqual(region.y2, yNorm)) points.push(region.x1, region.x2);
+        }
+        const values = Array.from(new Set(points.map(v => Number(v.toFixed(8))))).sort((a, b) => a - b);
+        const intervals = [];
+        for (let i = 0; i < values.length - 1; i++) {
+          const x1 = values[i];
+          const x2 = values[i + 1];
+          if (x2 - x1 <= EPS) continue;
+          const midX = (x1 + x2) / 2;
+          const topColored = isColoredPoint(midX, yNorm - BOUNDARY_EPS);
+          const bottomColored = isColoredPoint(midX, yNorm + BOUNDARY_EPS);
+          if (topColored !== bottomColored) intervals.push([x1, x2]);
+        }
+        return mergeIntervals(intervals);
+      }
+
+      function hasAnyRegionBoundaryAtVertical(xNorm) {
+        return state.regions.some(region => nearlyEqual(region.x1, xNorm) || nearlyEqual(region.x2, xNorm));
+      }
+
+      function hasAnyRegionBoundaryAtHorizontal(yNorm) {
+        return state.regions.some(region => nearlyEqual(region.y1, yNorm) || nearlyEqual(region.y2, yNorm));
+      }
+
+      function getVerticalVisibleIntervals(xNorm) {
+        if (state.verticalLineMode === 'full') return [[0, 1]];
+        if (state.verticalLineMode === 'partial' && state.secondaryOrientation === 'vertical') return getVerticalCoverageIntervals(xNorm);
+        if (state.verticalLineMode === 'hidden' && state.secondaryOrientation === 'vertical') return getVerticalOuterBoundaryIntervals(xNorm);
+        if (state.verticalLineMode === 'hidden' && hasAnyRegionBoundaryAtVertical(xNorm)) return [[0, 1]];
+        return [];
+      }
+
+      function getHorizontalVisibleIntervals(yNorm) {
+        if (state.horizontalLineMode === 'full') return [[0, 1]];
+        if (state.horizontalLineMode === 'partial' && state.secondaryOrientation === 'horizontal') return getHorizontalCoverageIntervals(yNorm);
+        if (state.horizontalLineMode === 'hidden' && state.secondaryOrientation === 'horizontal') return getHorizontalOuterBoundaryIntervals(yNorm);
+        if (state.horizontalLineMode === 'hidden' && hasAnyRegionBoundaryAtHorizontal(yNorm)) return [[0, 1]];
+        return [];
+      }
+
+      function isVerticalBoundaryVisibleAt(xNorm, yNorm) {
+        return getVerticalVisibleIntervals(xNorm).some(([y1, y2]) => yNorm > y1 + EPS && yNorm < y2 - EPS);
+      }
+
+      function isHorizontalBoundaryVisibleAt(yNorm, xNorm) {
+        return getHorizontalVisibleIntervals(yNorm).some(([x1, x2]) => xNorm > x1 + EPS && xNorm < x2 - EPS);
+      }
+
+      function getConnectedCells(col, row, targetType) {
+        const queue = [[col, row]];
+        const seen = new Set([`${col},${row}`]);
+        const result = [];
+
+        while (queue.length) {
+          const [c, r] = queue.shift();
+          result.push([c, r]);
+
+          const neighbors = [
+            [c - 1, r, 'left'],
+            [c + 1, r, 'right'],
+            [c, r - 1, 'up'],
+            [c, r + 1, 'down']
+          ];
+
+          for (const [nc, nr, dir] of neighbors) {
+            if (nc < 0 || nr < 0 || nc >= state.vertical || nr >= state.horizontal) continue;
+            const key = `${nc},${nr}`;
+            if (seen.has(key)) continue;
+
+            const neighborInfo = inspectRegion(getCurrentCell(nc, nr));
+            if (neighborInfo.type !== targetType) continue;
+
+            let connected = false;
+            if (dir === 'left' || dir === 'right') {
+              const boundaryX = dir === 'left' ? c / state.vertical : (c + 1) / state.vertical;
+              const midY = (r + 0.5) / state.horizontal;
+              connected = !isVerticalBoundaryVisibleAt(boundaryX, midY);
+            } else {
+              const boundaryY = dir === 'up' ? r / state.horizontal : (r + 1) / state.horizontal;
+              const midX = (c + 0.5) / state.vertical;
+              connected = !isHorizontalBoundaryVisibleAt(boundaryY, midX);
+            }
+
+            if (connected) {
+              seen.add(key);
+              queue.push([nc, nr]);
+            }
+          }
+        }
+
+        return result;
+      }
+
+      function applyPhaseToCells(cells, newPhase) {
+        for (const [col, row] of cells) {
+          setRegionPhase(getCurrentCell(col, row), newPhase);
+        }
+      }
+
+      function cycleCellAtPoint(x, y) {
+        const { col, row } = getCellFromCanvasPoint(x, y);
+        const cell = getCurrentCell(col, row);
+        const info = inspectRegion(cell);
+        const newPhase = nextPhaseFromInspection(info);
+
+        if (info.type === 'light' || info.type === 'dark') {
+          const connectedCells = getConnectedCells(col, row, info.type);
+          applyPhaseToCells(connectedCells, newPhase);
+        } else {
+          setRegionPhase(cell, newPhase);
+        }
+
+        draw();
+      }
+
+      function resizeCanvasForDisplay() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const targetWidth = Math.max(1, Math.round(rect.width * dpr));
+        const targetHeight = Math.max(1, Math.round(rect.height * dpr));
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+        }
+      }
+
+      function drawFills() {
+        const styles = getComputedStyle(document.documentElement);
+        const lightBlue = styles.getPropertyValue('--light-blue').trim();
+        const darkBlue = styles.getPropertyValue('--dark-blue').trim();
+        for (const region of state.regions) {
+          const x = region.x1 * canvas.width;
+          const y = region.y1 * canvas.height;
+          const w = (region.x2 - region.x1) * canvas.width;
+          const h = (region.y2 - region.y1) * canvas.height;
+          ctx.fillStyle = region.phase === 2 ? darkBlue : lightBlue;
+          ctx.fillRect(x, y, w, h);
+        }
+      }
+
+      function drawVerticalLines(gridWidth, dpr) {
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim() || '#111';
+        ctx.lineWidth = gridWidth * dpr;
+        ctx.setLineDash([]);
+        ctx.lineCap = 'butt';
+
+        for (let i = 1; i < state.vertical; i++) {
+          const xNorm = i / state.vertical;
+          const intervals = getVerticalVisibleIntervals(xNorm);
+          const x = xNorm * canvas.width;
+          for (const [y1, y2] of intervals) {
+            ctx.beginPath();
+            ctx.moveTo(x, y1 * canvas.height);
+            ctx.lineTo(x, y2 * canvas.height);
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawHorizontalLines(gridWidth, dpr) {
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim() || '#111';
+        ctx.lineWidth = gridWidth * dpr;
+        ctx.setLineDash([10 * dpr, 8 * dpr]);
+        ctx.lineCap = 'butt';
+
+        for (let j = 1; j < state.horizontal; j++) {
+          const yNorm = j / state.horizontal;
+          const intervals = getHorizontalVisibleIntervals(yNorm);
+          const y = yNorm * canvas.height;
+          for (const [x1, x2] of intervals) {
+            ctx.beginPath();
+            ctx.moveTo(x1 * canvas.width, y);
+            ctx.lineTo(x2 * canvas.width, y);
+            ctx.stroke();
+          }
+        }
+
+        ctx.setLineDash([]);
+      }
+
+      function drawGridLines() {
+        const styles = getComputedStyle(document.documentElement);
+        const dpr = window.devicePixelRatio || 1;
+        const gridWidth = parseFloat(styles.getPropertyValue('--grid-width')) || 2.5;
+        drawVerticalLines(gridWidth, dpr);
+        drawHorizontalLines(gridWidth, dpr);
+      }
+
+      function drawOuterBorder() {
+        const styles = getComputedStyle(document.documentElement);
+        const dpr = window.devicePixelRatio || 1;
+        const borderWidth = parseFloat(styles.getPropertyValue('--border-width')) || 9;
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = borderWidth * dpr;
+        ctx.setLineDash([]);
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function cmToPixels(cmValue) {
+        const probe = document.createElement('div');
+        probe.style.position = 'absolute';
+        probe.style.left = '-1000px';
+        probe.style.top = '-1000px';
+        probe.style.width = `${cmValue}cm`;
+        probe.style.height = '1px';
+        document.body.appendChild(probe);
+        const pixels = probe.getBoundingClientRect().width;
+        probe.remove();
+        return pixels;
+      }
+
+      function setLine(line, x1, y1, x2, y2) {
+        line.setAttribute('x1', x1.toFixed(2));
+        line.setAttribute('y1', y1.toFixed(2));
+        line.setAttribute('x2', x2.toFixed(2));
+        line.setAttribute('y2', y2.toFixed(2));
+      }
+
+      function updateArrows(forceRecalc = false) {
+        if (window.matchMedia('(max-width: 980px)').matches) {
+          annotationText.style.transform = '';
+          overlayState.initialized = false;
+          return;
+        }
+
+        if (!overlayState.initialized || forceRecalc) {
+          annotationText.style.transform = '';
+          const wrapRect = layoutWrap.getBoundingClientRect();
+          const rectRect = rectWrap.getBoundingClientRect();
+          const inputRect = rightInput.getBoundingClientRect();
+          const bottomRect = bottomTarget.getBoundingClientRect();
+          const naturalLabelRect = annotationText.getBoundingClientRect();
+          const gap2cm = cmToPixels(2);
+          const gap1cm = cmToPixels(1);
+
+          const desiredCenterX = inputRect.left - wrapRect.left + inputRect.width / 2;
+          const naturalCenterX = naturalLabelRect.left - wrapRect.left + naturalLabelRect.width / 2;
+          overlayState.annotationShiftX = desiredCenterX - naturalCenterX;
+          annotationText.style.transform = `translateX(${overlayState.annotationShiftX.toFixed(2)}px)`;
+
+          const labelRect = annotationText.getBoundingClientRect();
+          arrowOverlay.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
+          const labelCenterX = labelRect.left - wrapRect.left + labelRect.width / 2;
+
+          overlayState.bottomLine = {
+            x1: labelRect.left - wrapRect.left - gap2cm,
+            y1: labelRect.top - wrapRect.top + labelRect.height * 0.55,
+            x2: bottomRect.right - wrapRect.left + gap2cm,
+            y2: bottomRect.top - wrapRect.top + bottomRect.height / 2
+          };
+
+          overlayState.rightLine = {
+            x1: labelCenterX,
+            y1: rectRect.bottom - wrapRect.top,
+            x2: labelCenterX,
+            y2: inputRect.bottom - wrapRect.top + gap1cm
+          };
+
+          overlayState.initialized = true;
+        } else {
+          annotationText.style.transform = `translateX(${overlayState.annotationShiftX.toFixed(2)}px)`;
+        }
+
+        if (overlayState.bottomLine) {
+          setLine(arrowToBottom, overlayState.bottomLine.x1, overlayState.bottomLine.y1, overlayState.bottomLine.x2, overlayState.bottomLine.y2);
+        }
+        if (overlayState.rightLine) {
+          setLine(arrowToRight, overlayState.rightLine.x1, overlayState.rightLine.y1, overlayState.rightLine.x2, overlayState.rightLine.y2);
+        }
+      }
+
+      function draw() {
+        resizeCanvasForDisplay();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawFills();
+        drawGridLines();
+        drawOuterBorder();
+      }
+
+      function registerSecondaryOrientation(kind) {
+        if (!state.regions.length) return;
+        if (kind === 'vertical' && state.vertical === 1) {
+          state.secondaryOrientation = 'vertical';
+          state.verticalLineMode = 'partial';
+        }
+        if (kind === 'horizontal' && state.horizontal === 1) {
+          state.secondaryOrientation = 'horizontal';
+          state.horizontalLineMode = 'partial';
+        }
+      }
+
+      function setVertical(value) {
+        const newValue = clampValue(value);
+        if (newValue > 1 && state.vertical === 1) registerSecondaryOrientation('vertical');
+        state.vertical = newValue;
+        syncInputs();
+        draw();
+      }
+
+      function setHorizontal(value) {
+        const newValue = clampValue(value);
+        if (newValue > 1 && state.horizontal === 1) registerSecondaryOrientation('horizontal');
+        state.horizontal = newValue;
+        syncInputs();
+        draw();
+      }
+
+      function resetAll() {
+        state.vertical = 1;
+        state.horizontal = 1;
+        state.verticalLineMode = 'full';
+        state.horizontalLineMode = 'full';
+        state.secondaryOrientation = null;
+        state.regions = [];
+        syncInputs();
+        updateToggleButtons();
+        draw();
+      }
+
+      function stepValue(current, delta) {
+        return clampValue(current + delta);
+      }
+
+      function bindSmartInput(input, setter) {
+        let replaceOnNextDigit = false;
+
+        function activateReplaceMode() {
+          replaceOnNextDigit = input.value === '1';
+        }
+
+        input.addEventListener('focus', activateReplaceMode);
+        input.addEventListener('click', activateReplaceMode);
+
+        input.addEventListener('keydown', (event) => {
+          if (replaceOnNextDigit && /^[0-9]$/.test(event.key)) {
+            event.preventDefault();
+            input.value = event.key;
+            replaceOnNextDigit = false;
+            setter(input.value);
+            requestAnimationFrame(() => {
+              const pos = input.value.length;
+              input.setSelectionRange(pos, pos);
+            });
+            return;
+          }
+
+          if (event.key === 'Backspace' || event.key === 'Delete') {
+            replaceOnNextDigit = false;
+            return;
+          }
+
+          if (event.key.length === 1) replaceOnNextDigit = false;
+        });
+
+        input.addEventListener('input', () => {
+          replaceOnNextDigit = false;
+          setter(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+          replaceOnNextDigit = false;
+          setter(input.value);
+        });
+      }
+
+      vDec.addEventListener('click', () => setVertical(stepValue(state.vertical, -1)));
+      vInc.addEventListener('click', () => setVertical(stepValue(state.vertical, 1)));
+      hDec.addEventListener('click', () => setHorizontal(stepValue(state.horizontal, -1)));
+      hInc.addEventListener('click', () => setHorizontal(stepValue(state.horizontal, 1)));
+
+      bindSmartInput(vInput, setVertical);
+      bindSmartInput(hInput, setHorizontal);
+
+      toggleVerticalBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        state.verticalLineMode = state.verticalLineMode === 'hidden' ? 'full' : 'hidden';
+        updateToggleButtons();
+        draw();
+      });
+
+      toggleHorizontalBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        state.horizontalLineMode = state.horizontalLineMode === 'hidden' ? 'full' : 'hidden';
+        updateToggleButtons();
+        draw();
+      });
+
+      resetBtn.addEventListener('click', resetAll);
+
+      canvas.addEventListener('click', (event) => {
+        const { x, y } = getPointerPosition(event);
+        cycleCellAtPoint(x, y);
+      });
+
+      canvas.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        const { x, y } = getPointerPosition(event);
+        cycleCellAtPoint(x, y);
+      }, { passive: false });
+
+      window.addEventListener('resize', () => {
+        updateArrows(true);
+        draw();
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') resetAll();
+      });
+
+      syncInputs();
+      updateToggleButtons();
+      updateArrows(true);
+      draw();
+    })();
+  </script>
+</body>
+</html>
